@@ -57,9 +57,15 @@ export async function fetchAtomFeed(url: string, signal?: AbortSignal): Promise<
                          errorText.match(/<b>Exception Details:<\/b>([\s\S]*?)<br\s*\/?>/i) ||
                          errorText.match(/<p>(rsProcessingAborted|rsErrorExecutingCommand|rsReportNotReady)[\s\S]*?<\/p>/i);
 
-      const extractedError = errorMatch ? errorMatch[1].replace(/<[^>]*>/g, '').trim() : null;
+      let extractedError = errorMatch ? errorMatch[1].replace(/<[^>]*>/g, '').trim() : null;
 
-      throw new Error(`HTTP ${response.status}: ${extractedError || errorText.substring(0, 500)}`);
+      // If regex extraction failed, strip all HTML tags and show the text content
+      if (!extractedError) {
+        const textContent = errorText.replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+        extractedError = textContent.substring(0, 1000) || null;
+      }
+
+      throw new Error(`HTTP ${response.status}: ${extractedError || errorText.substring(0, 1000)}`);
     }
 
     const responseData = await response.text();
