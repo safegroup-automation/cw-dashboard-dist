@@ -256,6 +256,28 @@ async function runMigration(version: number): Promise<void> {
         console.log('hours_actual column may already exist:', e);
       }
       break;
+    case 7:
+      // Fix SSRS report paths after reports were moved to Project Reviews subfolder
+      console.log('Updating feed URLs for moved SSRS reports');
+      try {
+        const oldPath = '%2FProject%20Management%2FProject%20Manager%20Summary%20Report';
+        const newPath = '%2FProject%20Management%2FProject%20Reviews%2FProject%20Manager%20Summary%20Report';
+        const oldPathDetail = '%2FProject%20Management%2FProject%20Summary%20Detailed%20Report';
+        const newPathDetail = '%2FProject%20Management%2FProject%20Reviews%2FProject%20Summary%20Detailed%20Report';
+
+        const updated1 = db.prepare(
+          `UPDATE atom_feeds SET feed_url = REPLACE(feed_url, ?, ?), updated_at = datetime('now') WHERE feed_url LIKE '%' || ? || '%'`
+        ).run(oldPath, newPath, oldPath);
+        console.log(`Updated ${updated1.changes} project summary feed URL(s)`);
+
+        const updated2 = db.prepare(
+          `UPDATE atom_feeds SET feed_url = REPLACE(feed_url, ?, ?), updated_at = datetime('now') WHERE feed_url LIKE '%' || ? || '%'`
+        ).run(oldPathDetail, newPathDetail, oldPathDetail);
+        console.log(`Updated ${updated2.changes} project detail feed URL(s)`);
+      } catch (e) {
+        console.error('Error updating feed URLs:', e);
+      }
+      break;
     default:
       console.log(`No migration needed for version ${version}`);
   }

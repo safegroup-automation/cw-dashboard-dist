@@ -2,7 +2,7 @@
 <service xmlns:atom="http://www.w3.org/2005/Atom" xmlns:app="http://www.w3.org/2007/app" xmlns="http://www.w3.org/2007/app">
   <workspace>
     <atom:title>Project Summary Detailed Report</atom:title>
-    <collection href="http://ntl-ssrs-01/ReportServer?%2FConnectWise%20Reports%2FProject%20Management%2FProject%20Summary%20Detailed%20Report&amp;ProjectNo=0&amp;ThruDate=01%2F01%2F2026&amp;rs%3AParameterLanguage=&amp;rs%3ACommand=Render&amp;rs%3AFormat=ATOM&amp;rc%3AItemPath=Tablix1">
+    <collection href="http://ntl-ssrs-01/ReportServer?%2FConnectWise%20Reports%2FProject%20Management%2FProject%20Reviews%2FProject%20Summary%20Detailed%20Report&amp;ProjectNo=0&amp;ThruDate=01%2F01%2F2026&amp;rs%3AParameterLanguage=&amp;rs%3ACommand=Render&amp;rs%3AFormat=ATOM&amp;rc%3AItemPath=Tablix1">
       <atom:title>Tablix1</atom:title>
     </collection>
   </workspace>
