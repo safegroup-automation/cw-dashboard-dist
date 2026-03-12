@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Pin, FolderKanban, TrendingUp, Ticket, Clock } from 'lucide-react';
+import { Pin, FolderKanban, TrendingUp, Ticket, Clock, LayoutGrid, List } from 'lucide-react';
 import { Project, Opportunity, ServiceTicket } from '../../types';
 import { projects as projectsApi, opportunities as opportunitiesApi, serviceTickets as serviceTicketsApi, isElectron, settings, sync, events } from '../../api';
 import { formatLastSync } from './FullPageViewHeader';
@@ -7,6 +7,7 @@ import { useWebSocket } from '../../context/WebSocketContext';
 import ProjectCard from '../Project/ProjectCard';
 import OpportunityCard from '../Opportunity/OpportunityCard';
 import ServiceTicketCard from '../ServiceTicket/ServiceTicketCard';
+import { formatCurrency, formatHours, getProjectStatusColor, getTicketStatusColor, getPriorityColor, getStageColor, getOpportunityStatusColor } from '../../utils/formatting';
 
 // Setting key for visible detail fields
 const PROJECT_DETAIL_VISIBLE_FIELDS_KEY = 'project_detail_visible_fields';
@@ -26,7 +27,66 @@ interface SyncStatusState {
   serviceTickets: string | null;
 }
 
+function ProjectListRow({ project, onTogglePin }: { project: Project; onTogglePin: () => void }) {
+  const hoursEst = project.hoursOverride ?? project.hoursEstimate;
+  const pct = hoursEst && hoursEst > 0 && project.hoursActual != null
+    ? Math.round((project.hoursActual / hoursEst) * 100) : null;
+  const pctColor = pct === null ? '' : pct >= 100 ? 'text-red-400' : pct >= 80 ? 'text-yellow-400' : 'text-green-400';
+
+  return (
+    <div className="flex items-center gap-3 px-3 py-1.5 hover:bg-board-border/30 border-b border-board-border/50 text-sm">
+      <button onClick={() => onTogglePin()} className="text-blue-400 p-0.5 flex-shrink-0"><Pin size={12} fill="currentColor" /></button>
+      <span className="text-white truncate flex-1 min-w-0 font-medium">{project.projectName}</span>
+      <span className="text-gray-400 truncate max-w-[180px] text-xs">{project.clientName}</span>
+      <span className={`text-xs px-1.5 py-0.5 rounded ${getProjectStatusColor(project.status)}`}>{project.status}</span>
+      {pct !== null && <span className={`text-xs w-12 text-right ${pctColor}`}>{pct}%</span>}
+      {project.hoursActual != null && <span className="text-xs text-gray-500 w-16 text-right">{formatHours(project.hoursActual)}/{formatHours(hoursEst)}</span>}
+    </div>
+  );
+}
+
+function OpportunityListRow({ opportunity, onTogglePin }: { opportunity: Opportunity; onTogglePin: () => void }) {
+  return (
+    <div className="flex items-center gap-3 px-3 py-1.5 hover:bg-board-border/30 border-b border-board-border/50 text-sm">
+      <button onClick={() => onTogglePin()} className="text-blue-400 p-0.5 flex-shrink-0"><Pin size={12} fill="currentColor" /></button>
+      <span className="text-white truncate flex-1 min-w-0 font-medium">{opportunity.opportunityName}</span>
+      <span className="text-gray-400 truncate max-w-[180px] text-xs">{opportunity.companyName}</span>
+      {opportunity.stage && <span className={`text-[10px] px-1.5 py-0.5 rounded ${getStageColor(opportunity.stage)} text-white`}>{opportunity.stage}</span>}
+      {opportunity.status && <span className={`text-xs ${getOpportunityStatusColor(opportunity.status)}`}>{opportunity.status}</span>}
+      <span className="text-xs font-semibold text-green-400 w-20 text-right">{formatCurrency(opportunity.expectedRevenue)}</span>
+      {opportunity.salesRep && <span className="text-xs text-gray-500 truncate max-w-[100px]">{opportunity.salesRep}</span>}
+    </div>
+  );
+}
+
+function ServiceTicketListRow({ ticket, onTogglePin }: { ticket: ServiceTicket; onTogglePin: () => void }) {
+  const statusColors = getTicketStatusColor(ticket.status);
+  return (
+    <div className="flex items-center gap-3 px-3 py-1.5 hover:bg-board-border/30 border-b border-board-border/50 text-sm">
+      <button onClick={() => onTogglePin()} className="text-blue-400 p-0.5 flex-shrink-0"><Pin size={12} fill="currentColor" /></button>
+      <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">#{ticket.externalId}</span>
+      <span className="text-white truncate flex-1 min-w-0 font-medium">{ticket.summary || 'No summary'}</span>
+      <span className="text-gray-400 truncate max-w-[180px] text-xs">{ticket.companyName}</span>
+      {ticket.priority && <span className={`text-[10px] px-1.5 py-0.5 rounded ${getPriorityColor(ticket.priority)}`}>{ticket.priority}</span>}
+      <span className={`text-xs ${statusColors.text}`}>{ticket.status}</span>
+      {ticket.assignedTo && <span className="text-xs text-gray-500 truncate max-w-[100px]">{ticket.assignedTo}</span>}
+      {ticket.hoursRemaining != null && <span className="text-xs text-gray-400 w-12 text-right">{formatHours(ticket.hoursRemaining)}h</span>}
+    </div>
+  );
+}
+
 export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinnedServiceTickets, togglePin }: PinnedViewProps) {
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
+    try { return (localStorage.getItem('cw-dashboard-pinned-view') as 'cards' | 'list') || 'cards'; } catch { return 'cards'; }
+  });
+  const toggleViewMode = useCallback(() => {
+    setViewMode(prev => {
+      const next = prev === 'cards' ? 'list' : 'cards';
+      try { localStorage.setItem('cw-dashboard-pinned-view', next); } catch {}
+      return next;
+    });
+  }, []);
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [serviceTickets, setServiceTickets] = useState<ServiceTicket[]>([]);
@@ -162,12 +222,22 @@ export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinned
     <div className="h-[calc(100vh-56px)] flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-board-panel border-b border-board-border flex-shrink-0">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500">
-          <Pin size={16} className="text-white" />
-          <span className="text-white font-semibold">Pinned Items</span>
-          <span className="text-white/80 text-sm">
-            {projects.length + opportunities.length + serviceTickets.length}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-500">
+            <Pin size={16} className="text-white" />
+            <span className="text-white font-semibold">Pinned Items</span>
+            <span className="text-white/80 text-sm">
+              {projects.length + opportunities.length + serviceTickets.length}
+            </span>
+          </div>
+          <button
+            onClick={toggleViewMode}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-board-bg border border-board-border text-gray-300 hover:text-white hover:border-gray-500 transition-colors text-sm"
+            title={viewMode === 'cards' ? 'Switch to list view' : 'Switch to card view'}
+          >
+            {viewMode === 'cards' ? <List size={14} /> : <LayoutGrid size={14} />}
+            {viewMode === 'cards' ? 'List' : 'Cards'}
+          </button>
         </div>
 
         {/* Sync status for all types */}
@@ -200,18 +270,26 @@ export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinned
               <h2 className="text-lg font-semibold text-white">Projects</h2>
               <span className="text-sm text-gray-500">({projects.length})</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-3">
-              {projects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  isPinned={true}
-                  onTogglePin={() => togglePin('projects', project.id)}
-                  visibleDetailFields={visibleDetailFields}
-                  onProjectUpdated={(updated) => setProjects(prev => prev.map(p => p.id === updated.id ? updated : p))}
-                />
-              ))}
-            </div>
+            {viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-3">
+                {projects.map((project) => (
+                  <ProjectCard
+                    key={project.id}
+                    project={project}
+                    isPinned={true}
+                    onTogglePin={() => togglePin('projects', project.id)}
+                    visibleDetailFields={visibleDetailFields}
+                    onProjectUpdated={(updated) => setProjects(prev => prev.map(p => p.id === updated.id ? updated : p))}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-board-bg border border-board-border rounded overflow-hidden">
+                {projects.map((project) => (
+                  <ProjectListRow key={project.id} project={project} onTogglePin={() => togglePin('projects', project.id)} />
+                ))}
+              </div>
+            )}
           </section>
         )}
 
@@ -223,16 +301,24 @@ export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinned
               <h2 className="text-lg font-semibold text-white">Opportunities</h2>
               <span className="text-sm text-gray-500">({opportunities.length})</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-3">
-              {opportunities.map((opportunity) => (
-                <OpportunityCard
-                  key={opportunity.id}
-                  opportunity={opportunity}
-                  isPinned={true}
-                  onTogglePin={() => togglePin('opportunities', opportunity.id)}
-                />
-              ))}
-            </div>
+            {viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-3">
+                {opportunities.map((opportunity) => (
+                  <OpportunityCard
+                    key={opportunity.id}
+                    opportunity={opportunity}
+                    isPinned={true}
+                    onTogglePin={() => togglePin('opportunities', opportunity.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-board-bg border border-board-border rounded overflow-hidden">
+                {opportunities.map((opportunity) => (
+                  <OpportunityListRow key={opportunity.id} opportunity={opportunity} onTogglePin={() => togglePin('opportunities', opportunity.id)} />
+                ))}
+              </div>
+            )}
           </section>
         )}
 
@@ -244,16 +330,24 @@ export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinned
               <h2 className="text-lg font-semibold text-white">Service Tickets</h2>
               <span className="text-sm text-gray-500">({serviceTickets.length})</span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-3">
-              {serviceTickets.map((ticket) => (
-                <ServiceTicketCard
-                  key={ticket.id}
-                  ticket={ticket}
-                  isPinned={true}
-                  onTogglePin={() => togglePin('service-tickets', ticket.id)}
-                />
-              ))}
-            </div>
+            {viewMode === 'cards' ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-3">
+                {serviceTickets.map((ticket) => (
+                  <ServiceTicketCard
+                    key={ticket.id}
+                    ticket={ticket}
+                    isPinned={true}
+                    onTogglePin={() => togglePin('service-tickets', ticket.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="bg-board-bg border border-board-border rounded overflow-hidden">
+                {serviceTickets.map((ticket) => (
+                  <ServiceTicketListRow key={ticket.id} ticket={ticket} onTogglePin={() => togglePin('service-tickets', ticket.id)} />
+                ))}
+              </div>
+            )}
           </section>
         )}
       </div>

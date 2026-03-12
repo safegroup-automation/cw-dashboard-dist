@@ -71,6 +71,19 @@ export function ProjectFilters({
   );
 }
 
+// Known ConnectWise opportunity statuses
+const KNOWN_OPPORTUNITY_STATUSES = [
+  '1. Open',
+  '2. Order Approved',
+  '3. Won',
+  '4a. Lost - Deferred',
+  '4b. Lost - Job Re-Quoted',
+  '4c. Lost - Job Cancelled',
+  '4d. Lost - Competitor',
+  '4e. Lost',
+  '5. No-Bid',
+];
+
 interface OpportunityFiltersProps {
   stageFilter: string;
   setStageFilter: (value: string) => void;
@@ -94,6 +107,9 @@ export function OpportunityFilters({
   setSalesRepFilter,
   salesReps,
 }: OpportunityFiltersProps) {
+  // Merge known statuses with any from the database
+  const allStatuses = [...new Set([...KNOWN_OPPORTUNITY_STATUSES, ...statuses])];
+
   return (
     <>
       <FilterSelect
@@ -103,15 +119,13 @@ export function OpportunityFilters({
         label="All Stages"
         accentColor="emerald"
       />
-      {statuses.length > 0 && (
-        <FilterSelect
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={statuses}
-          label="All Statuses"
-          accentColor="emerald"
-        />
-      )}
+      <FilterSelect
+        value={statusFilter}
+        onChange={setStatusFilter}
+        options={allStatuses}
+        label="All Statuses"
+        accentColor="emerald"
+      />
       <FilterSelect
         value={salesRepFilter}
         onChange={setSalesRepFilter}
