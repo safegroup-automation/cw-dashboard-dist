@@ -53,8 +53,8 @@ export default function FullPageView({ type, isPinned, togglePin }: FullPageView
   const [showInactive, setShowInactive] = useState(false);
   const [projectStatuses, setProjectStatuses] = useState<string[]>([]);
 
-  // Opportunity-specific filters
-  const [stageFilter, setStageFilter] = useState('');
+  // Opportunity-specific filters - default to "1. Open" stage
+  const [stageFilter, setStageFilter] = useState(type === 'opportunities' ? '1. Open' : '');
   const [salesRepFilter, setSalesRepFilter] = useState('');
   const [stages, setStages] = useState<string[]>([]);
   const [salesReps, setSalesReps] = useState<string[]>([]);
