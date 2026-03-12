@@ -74,7 +74,7 @@ function cmp(a: unknown, b: unknown): number {
 // ============================================
 // Project list table
 // ============================================
-type ProjectSortCol = 'name' | 'client' | 'status' | 'pct' | 'hours';
+type ProjectSortCol = 'name' | 'client' | 'status' | 'pct' | 'hours' | 'budget' | 'spent';
 
 function ProjectListTable({ projects, togglePin, searchText }: { projects: Project[]; togglePin: (id: number) => void; searchText: string }) {
   const [sort, setSort] = useState<SortState<ProjectSortCol>>({ col: 'name', dir: 'asc' });
@@ -97,6 +97,8 @@ function ProjectListTable({ projects, togglePin, searchText }: { projects: Proje
         case 'status': v = cmp(a.status, b.status); break;
         case 'pct': v = cmp(aPct, bPct); break;
         case 'hours': v = cmp(a.hoursActual, b.hoursActual); break;
+        case 'budget': v = cmp(a.budget, b.budget); break;
+        case 'spent': v = cmp(a.spent, b.spent); break;
         default: v = 0;
       }
       return sort.dir === 'desc' ? -v : v;
@@ -106,7 +108,7 @@ function ProjectListTable({ projects, togglePin, searchText }: { projects: Proje
   const onSort = useCallback((col: ProjectSortCol) => setSort(prev => toggleSort(prev, col)), []);
 
   return (
-    <div className="bg-board-bg border border-board-border rounded overflow-hidden">
+    <div className="bg-board-bg border border-board-border rounded overflow-hidden overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-board-panel border-b border-board-border">
           <tr>
@@ -114,6 +116,8 @@ function ProjectListTable({ projects, togglePin, searchText }: { projects: Proje
             <SortHeader label="Project" col="name" sort={sort} onSort={onSort} />
             <SortHeader label="Client" col="client" sort={sort} onSort={onSort} />
             <SortHeader label="Status" col="status" sort={sort} onSort={onSort} />
+            <SortHeader label="Budget" col="budget" sort={sort} onSort={onSort} className="text-right" />
+            <SortHeader label="Spent" col="spent" sort={sort} onSort={onSort} className="text-right" />
             <SortHeader label="%" col="pct" sort={sort} onSort={onSort} className="text-right" />
             <SortHeader label="Hours" col="hours" sort={sort} onSort={onSort} className="text-right" />
           </tr>
@@ -124,6 +128,9 @@ function ProjectListTable({ projects, togglePin, searchText }: { projects: Proje
             const pct = hoursEst && hoursEst > 0 && project.hoursActual != null
               ? Math.round((project.hoursActual / hoursEst) * 100) : null;
             const pctColor = pct === null ? '' : pct >= 100 ? 'text-red-400' : pct >= 80 ? 'text-yellow-400' : 'text-green-400';
+            const budgetPct = project.budget && project.budget > 0 && project.spent != null
+              ? (project.spent / project.budget) * 100 : null;
+            const budgetColor = budgetPct === null ? 'text-gray-500' : budgetPct >= 100 ? 'text-red-400' : budgetPct >= 80 ? 'text-yellow-400' : 'text-green-400';
 
             return (
               <tr key={project.id} className="border-b border-board-border/50 hover:bg-board-border/30">
@@ -133,8 +140,10 @@ function ProjectListTable({ projects, togglePin, searchText }: { projects: Proje
                 <td className="px-2 py-1.5 text-white font-medium truncate max-w-[300px]">{project.projectName}</td>
                 <td className="px-2 py-1.5 text-gray-400 text-xs truncate max-w-[200px]">{project.clientName}</td>
                 <td className="px-2 py-1.5"><span className={`text-xs px-1.5 py-0.5 rounded ${getProjectStatusColor(project.status)}`}>{project.status}</span></td>
+                <td className={`px-2 py-1.5 text-xs text-right ${budgetColor}`}>{project.budget != null ? formatCurrency(project.budget) : ''}</td>
+                <td className={`px-2 py-1.5 text-xs text-right ${budgetColor}`}>{project.spent != null ? formatCurrency(project.spent) : ''}</td>
                 <td className={`px-2 py-1.5 text-xs text-right ${pctColor}`}>{pct !== null ? `${pct}%` : ''}</td>
-                <td className="px-2 py-1.5 text-xs text-gray-500 text-right">{project.hoursActual != null ? `${formatHours(project.hoursActual)}/${formatHours(hoursEst)}` : ''}</td>
+                <td className="px-2 py-1.5 text-xs text-gray-500 text-right whitespace-nowrap">{project.hoursActual != null ? `${formatHours(project.hoursActual)}/${formatHours(hoursEst)}` : ''}</td>
               </tr>
             );
           })}
@@ -147,7 +156,7 @@ function ProjectListTable({ projects, togglePin, searchText }: { projects: Proje
 // ============================================
 // Opportunity list table
 // ============================================
-type OpportunitySortCol = 'name' | 'company' | 'stage' | 'status' | 'revenue' | 'rep' | 'probability';
+type OpportunitySortCol = 'name' | 'company' | 'stage' | 'status' | 'revenue' | 'weighted' | 'rep' | 'probability' | 'closeDate';
 
 function OpportunityListTable({ opportunities, togglePin, searchText }: { opportunities: Opportunity[]; togglePin: (id: number) => void; searchText: string }) {
   const [sort, setSort] = useState<SortState<OpportunitySortCol>>({ col: 'name', dir: 'asc' });
@@ -165,8 +174,10 @@ function OpportunityListTable({ opportunities, togglePin, searchText }: { opport
         case 'stage': v = cmp(a.stage, b.stage); break;
         case 'status': v = cmp(a.status, b.status); break;
         case 'revenue': v = cmp(a.expectedRevenue, b.expectedRevenue); break;
+        case 'weighted': v = cmp(a.weightedValue, b.weightedValue); break;
         case 'rep': v = cmp(a.salesRep, b.salesRep); break;
         case 'probability': v = cmp(a.probability, b.probability); break;
+        case 'closeDate': v = cmp(a.closeDate, b.closeDate); break;
         default: v = 0;
       }
       return sort.dir === 'desc' ? -v : v;
@@ -176,7 +187,7 @@ function OpportunityListTable({ opportunities, togglePin, searchText }: { opport
   const onSort = useCallback((col: OpportunitySortCol) => setSort(prev => toggleSort(prev, col)), []);
 
   return (
-    <div className="bg-board-bg border border-board-border rounded overflow-hidden">
+    <div className="bg-board-bg border border-board-border rounded overflow-hidden overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-board-panel border-b border-board-border">
           <tr>
@@ -186,8 +197,10 @@ function OpportunityListTable({ opportunities, togglePin, searchText }: { opport
             <SortHeader label="Stage" col="stage" sort={sort} onSort={onSort} />
             <SortHeader label="Status" col="status" sort={sort} onSort={onSort} />
             <SortHeader label="Revenue" col="revenue" sort={sort} onSort={onSort} className="text-right" />
-            <SortHeader label="Rep" col="rep" sort={sort} onSort={onSort} />
+            <SortHeader label="Weighted" col="weighted" sort={sort} onSort={onSort} className="text-right" />
             <SortHeader label="Prob" col="probability" sort={sort} onSort={onSort} className="text-right" />
+            <SortHeader label="Close Date" col="closeDate" sort={sort} onSort={onSort} />
+            <SortHeader label="Rep" col="rep" sort={sort} onSort={onSort} />
           </tr>
         </thead>
         <tbody>
@@ -200,9 +213,11 @@ function OpportunityListTable({ opportunities, togglePin, searchText }: { opport
               <td className="px-2 py-1.5 text-gray-400 text-xs truncate max-w-[200px]">{opp.companyName}</td>
               <td className="px-2 py-1.5">{opp.stage && <span className={`text-[10px] px-1.5 py-0.5 rounded ${getStageColor(opp.stage)} text-white`}>{opp.stage}</span>}</td>
               <td className="px-2 py-1.5">{opp.status && <span className={`text-xs ${getOpportunityStatusColor(opp.status)}`}>{opp.status}</span>}</td>
-              <td className="px-2 py-1.5 text-xs font-semibold text-green-400 text-right">{formatCurrency(opp.expectedRevenue)}</td>
-              <td className="px-2 py-1.5 text-xs text-gray-500 truncate max-w-[120px]">{opp.salesRep}</td>
+              <td className="px-2 py-1.5 text-xs font-semibold text-green-400 text-right whitespace-nowrap">{formatCurrency(opp.expectedRevenue)}</td>
+              <td className="px-2 py-1.5 text-xs text-emerald-400/70 text-right whitespace-nowrap">{opp.weightedValue != null ? formatCurrency(opp.weightedValue) : ''}</td>
               <td className="px-2 py-1.5 text-xs text-gray-500 text-right">{opp.probability != null ? `${opp.probability}%` : ''}</td>
+              <td className="px-2 py-1.5 text-xs text-gray-500 whitespace-nowrap">{opp.closeDate || ''}</td>
+              <td className="px-2 py-1.5 text-xs text-gray-500 truncate max-w-[120px]">{opp.salesRep}</td>
             </tr>
           ))}
         </tbody>
@@ -214,14 +229,14 @@ function OpportunityListTable({ opportunities, togglePin, searchText }: { opport
 // ============================================
 // Service ticket list table
 // ============================================
-type TicketSortCol = 'id' | 'summary' | 'company' | 'priority' | 'status' | 'assignee' | 'hours';
+type TicketSortCol = 'id' | 'summary' | 'company' | 'priority' | 'status' | 'assignee' | 'board' | 'hours' | 'budget';
 
 function TicketListTable({ tickets, togglePin, searchText }: { tickets: ServiceTicket[]; togglePin: (id: number) => void; searchText: string }) {
   const [sort, setSort] = useState<SortState<TicketSortCol>>({ col: 'id', dir: 'desc' });
 
   const sorted = useMemo(() => {
     const filtered = searchText
-      ? tickets.filter(t => `${t.summary} ${t.companyName} ${t.status} ${t.priority} ${t.assignedTo} ${t.externalId}`.toLowerCase().includes(searchText.toLowerCase()))
+      ? tickets.filter(t => `${t.summary} ${t.companyName} ${t.status} ${t.priority} ${t.assignedTo} ${t.externalId} ${t.boardName}`.toLowerCase().includes(searchText.toLowerCase()))
       : tickets;
 
     return [...filtered].sort((a, b) => {
@@ -233,7 +248,9 @@ function TicketListTable({ tickets, togglePin, searchText }: { tickets: ServiceT
         case 'priority': v = cmp(a.priority, b.priority); break;
         case 'status': v = cmp(a.status, b.status); break;
         case 'assignee': v = cmp(a.assignedTo, b.assignedTo); break;
+        case 'board': v = cmp(a.boardName, b.boardName); break;
         case 'hours': v = cmp(a.hoursRemaining, b.hoursRemaining); break;
+        case 'budget': v = cmp(a.budget, b.budget); break;
         default: v = 0;
       }
       return sort.dir === 'desc' ? -v : v;
@@ -243,7 +260,7 @@ function TicketListTable({ tickets, togglePin, searchText }: { tickets: ServiceT
   const onSort = useCallback((col: TicketSortCol) => setSort(prev => toggleSort(prev, col)), []);
 
   return (
-    <div className="bg-board-bg border border-board-border rounded overflow-hidden">
+    <div className="bg-board-bg border border-board-border rounded overflow-hidden overflow-x-auto">
       <table className="w-full text-sm">
         <thead className="bg-board-panel border-b border-board-border">
           <tr>
@@ -251,10 +268,12 @@ function TicketListTable({ tickets, togglePin, searchText }: { tickets: ServiceT
             <SortHeader label="#" col="id" sort={sort} onSort={onSort} />
             <SortHeader label="Summary" col="summary" sort={sort} onSort={onSort} />
             <SortHeader label="Company" col="company" sort={sort} onSort={onSort} />
+            <SortHeader label="Board" col="board" sort={sort} onSort={onSort} />
             <SortHeader label="Priority" col="priority" sort={sort} onSort={onSort} />
             <SortHeader label="Status" col="status" sort={sort} onSort={onSort} />
             <SortHeader label="Assignee" col="assignee" sort={sort} onSort={onSort} />
             <SortHeader label="Hrs Rem" col="hours" sort={sort} onSort={onSort} className="text-right" />
+            <SortHeader label="Budget" col="budget" sort={sort} onSort={onSort} className="text-right" />
           </tr>
         </thead>
         <tbody>
@@ -268,10 +287,12 @@ function TicketListTable({ tickets, togglePin, searchText }: { tickets: ServiceT
                 <td className="px-2 py-1.5 text-[10px] font-mono text-gray-500">#{ticket.externalId}</td>
                 <td className="px-2 py-1.5 text-white font-medium truncate max-w-[300px]">{ticket.summary || 'No summary'}</td>
                 <td className="px-2 py-1.5 text-gray-400 text-xs truncate max-w-[200px]">{ticket.companyName}</td>
+                <td className="px-2 py-1.5 text-xs text-gray-500 truncate max-w-[120px]">{ticket.boardName}</td>
                 <td className="px-2 py-1.5">{ticket.priority && <span className={`text-[10px] px-1.5 py-0.5 rounded ${getPriorityColor(ticket.priority)}`}>{ticket.priority}</span>}</td>
                 <td className="px-2 py-1.5"><span className={`text-xs ${statusColors.text}`}>{ticket.status}</span></td>
                 <td className="px-2 py-1.5 text-xs text-gray-500 truncate max-w-[120px]">{ticket.assignedTo}</td>
-                <td className="px-2 py-1.5 text-xs text-gray-400 text-right">{ticket.hoursRemaining != null ? `${formatHours(ticket.hoursRemaining)}` : ''}</td>
+                <td className="px-2 py-1.5 text-xs text-gray-400 text-right">{ticket.hoursRemaining != null ? formatHours(ticket.hoursRemaining) : ''}</td>
+                <td className="px-2 py-1.5 text-xs text-gray-500 text-right whitespace-nowrap">{ticket.budget != null ? formatCurrency(ticket.budget) : ''}</td>
               </tr>
             );
           })}
