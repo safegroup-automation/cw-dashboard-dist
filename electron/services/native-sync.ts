@@ -626,6 +626,7 @@ export async function syncOpportunities(
             'company_name',
             'sales_rep',
             'stage',
+            'status',
             'expected_revenue',
             'close_date',
             'probability',
