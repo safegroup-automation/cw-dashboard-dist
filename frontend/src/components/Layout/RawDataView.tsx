@@ -1,12 +1,15 @@
 import { Project, Opportunity, ServiceTicket } from '../../types';
 
 // Safely parse and format raw JSON data
-const formatRawData = (rawData: string | null | undefined): string => {
+// rawData may be a string (from API) or already-parsed object (from Electron IPC)
+const formatRawData = (rawData: string | Record<string, unknown> | null | undefined): string => {
   if (!rawData) return 'No raw data available - sync again to populate';
+  if (typeof rawData === 'object') {
+    return JSON.stringify(rawData, null, 2);
+  }
   try {
     return JSON.stringify(JSON.parse(rawData), null, 2);
   } catch {
-    // If JSON parsing fails, show the raw string with error message
     return `[Invalid JSON - displaying raw string]\n\n${rawData}`;
   }
 };
@@ -14,7 +17,7 @@ const formatRawData = (rawData: string | null | undefined): string => {
 interface RawDataCardProps {
   title: string;
   subtitle: string;
-  rawData: string | null | undefined;
+  rawData: string | Record<string, unknown> | null | undefined;
   detailRawData?: string | null | undefined;
 }
 

@@ -46,9 +46,9 @@ export default function OpportunityCard({ opportunity, isPinned, onTogglePin, al
             <Pin size={12} fill={isPinned ? 'currentColor' : 'none'} />
           </button>
         )}
-        {(opportunity.status || opportunity.stage) && (
-          <span className={`text-[11px] flex-shrink-0 ${getOpportunityStatusColor(opportunity.status || opportunity.stage)}`}>
-            {opportunity.status || opportunity.stage}
+        {opportunity.status && opportunity.status !== opportunity.stage && (
+          <span className={`text-[11px] flex-shrink-0 ${getOpportunityStatusColor(opportunity.status)}`}>
+            {opportunity.status}
           </span>
         )}
         {!alwaysExpanded && (
