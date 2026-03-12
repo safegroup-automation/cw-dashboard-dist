@@ -32,11 +32,11 @@ export default function ServiceTicketCard({ ticket, isPinned, onTogglePin, alway
       onClick={handleClick}
       className={`bg-board-bg border border-board-border border-l-4 ${statusColors.border} ${statusColors.bg} rounded px-2 py-1.5 overflow-hidden ${!alwaysExpanded ? 'cursor-pointer hover:bg-board-border/30' : ''} transition-all`}
     >
-      {/* Row 1: Ticket number, Pin, and Priority */}
+      {/* Row 1: Summary (primary), Pin, and Priority */}
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">#{ticket.externalId}</span>
         <span className="text-[13px] font-semibold text-white truncate flex-1 min-w-0">
-          {ticket.companyName || 'No Company'}
+          {ticket.summary || 'No summary'}
         </span>
         {onTogglePin && (
           <button
@@ -61,10 +61,10 @@ export default function ServiceTicketCard({ ticket, isPinned, onTogglePin, alway
         )}
       </div>
 
-      {/* Row 2: Summary */}
+      {/* Row 2: Company name (secondary) */}
       <div className="mt-0.5 min-w-0">
         <span className="text-xs text-gray-400 truncate block">
-          {ticket.summary || 'No summary'}
+          {ticket.companyName || 'No Company'}
         </span>
       </div>
 

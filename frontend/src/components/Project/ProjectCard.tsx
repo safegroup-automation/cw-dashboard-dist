@@ -125,10 +125,10 @@ export default function ProjectCard({ project, isPinned, onTogglePin, alwaysExpa
       onClick={handleClick}
       className={`bg-board-bg border border-board-border border-l-2 ${getProjectStatusStyle(project.status)} rounded px-2 py-1.5 ${!alwaysExpanded ? 'cursor-pointer hover:bg-board-border/30' : ''} transition-all`}
     >
-      {/* First row: Client name, Pin, and Status */}
+      {/* First row: Project name (primary), Pin, and Status */}
       <div className="flex items-center gap-2">
         <span className="text-[13px] font-semibold text-white truncate flex-1">
-          {project.clientName}
+          {project.projectName}
         </span>
         {onTogglePin && (
           <button
@@ -151,9 +151,9 @@ export default function ProjectCard({ project, isPinned, onTogglePin, alwaysExpa
         )}
       </div>
 
-      {/* Second row: Project name */}
+      {/* Second row: Client name (secondary) */}
       <div className="mt-0.5">
-        <span className="text-xs text-gray-400 truncate block">{project.projectName}</span>
+        <span className="text-xs text-gray-400 truncate block">{project.clientName}</span>
       </div>
 
       {/* Hours progress bar (primary) */}
