@@ -122,7 +122,7 @@ describe('truncate', () => {
 describe('getStageColor', () => {
   it('returns colors for known stages', () => {
     expect(getStageColor('Proposal')).toContain('bg-');
-    expect(getStageColor('Closed Won')).toBe('bg-green-500');
+    expect(getStageColor('Closed Won')).toBe('bg-green-600');
     expect(getStageColor('Early Lead')).toBe('bg-blue-500');
     expect(getStageColor('Quotation')).toBe('bg-purple-500');
     expect(getStageColor('Lost')).toBe('bg-red-500');
