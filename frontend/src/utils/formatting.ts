@@ -172,9 +172,11 @@ export function getStageStyle(stage: string | undefined | null): string {
 export function getOpportunityStatusColor(status: string | undefined | null): string {
   if (!status) return 'text-gray-400';
   const s = status.toLowerCase();
-  if (s.includes('open') || s.includes('active')) return 'text-emerald-400';
-  if (s.includes('won')) return 'text-green-400';
-  if (s.includes('lost') || s.includes('cancelled') || s.includes('canceled')) return 'text-red-400';
+  if (s.startsWith('1.') || s.includes('open') || s.includes('active')) return 'text-emerald-400';
+  if (s.startsWith('2.') || s.includes('approved')) return 'text-blue-400';
+  if (s.startsWith('3.') || s.includes('won')) return 'text-green-400';
+  if (s.startsWith('4') || s.includes('lost') || s.includes('cancelled') || s.includes('canceled')) return 'text-red-400';
+  if (s.startsWith('5.') || s.includes('no-bid') || s.includes('no bid')) return 'text-gray-500';
   if (s.includes('closed')) return 'text-gray-400';
   return 'text-gray-400';
 }

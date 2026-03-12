@@ -103,13 +103,15 @@ export function OpportunityFilters({
         label="All Stages"
         accentColor="emerald"
       />
-      <FilterSelect
-        value={statusFilter}
-        onChange={setStatusFilter}
-        options={statuses}
-        label="All Statuses"
-        accentColor="emerald"
-      />
+      {statuses.length > 0 && (
+        <FilterSelect
+          value={statusFilter}
+          onChange={setStatusFilter}
+          options={statuses}
+          label="All Statuses"
+          accentColor="emerald"
+        />
+      )}
       <FilterSelect
         value={salesRepFilter}
         onChange={setSalesRepFilter}
