@@ -573,6 +573,11 @@ export async function syncOpportunities(
       .filter(([key]) => key.toLowerCase().includes('id') || key.toLowerCase().includes('rec'))
       .slice(0, 10);
     console.log('[NativeSync] Sample opportunity ID fields:', JSON.stringify(Object.fromEntries(idFields)));
+    // Log status/stage related fields for debugging
+    const statusFields = Object.entries(sampleEntry)
+      .filter(([key]) => key.toLowerCase().includes('status') || key.toLowerCase().includes('stage') || key.toLowerCase().includes('sales'))
+      .slice(0, 15);
+    console.log('[NativeSync] Sample opportunity status/stage fields:', JSON.stringify(Object.fromEntries(statusFields)));
 
     let created = 0;
     let updated = 0;
@@ -1114,6 +1119,9 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
       }
     }
   }
+
+  // Debug: log stage and status resolution for first few entries
+  console.log(`[NativeSync] Opp "${opportunityName}": stage="${stage}", status="${status}", Status1="${entry.Status1 || 'N/A'}", Sales_Stage="${entry.Sales_Stage || 'N/A'}"`);
 
   // Expected revenue - try various field names
   const expectedRevenue = parseNumber(
