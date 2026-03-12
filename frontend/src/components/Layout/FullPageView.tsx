@@ -141,16 +141,21 @@ export default function FullPageView({ type, isPinned, togglePin }: FullPageView
           setProjects(data);
           setProjectStatuses(statusesData);
         } else if (type === 'opportunities') {
-          const [data, stagesData, statusesData, repsData] = await Promise.all([
+          const [data, stagesData, repsData] = await Promise.all([
             opportunitiesApi.getAll({}),
             opportunitiesApi.getStages(),
-            opportunitiesApi.getStatuses(),
             opportunitiesApi.getSalesReps(),
           ]);
           setOpportunities(data);
           setStages(stagesData);
-          setOppStatuses(statusesData);
           setSalesReps(repsData);
+          // Fetch statuses separately - column may not exist if migration hasn't run
+          try {
+            const statusesData = await opportunitiesApi.getStatuses();
+            setOppStatuses(statusesData);
+          } catch {
+            setOppStatuses([]);
+          }
         } else if (type === 'service-tickets') {
           const [data, statusesData, prioritiesData, assigneesData] = await Promise.all([
             serviceTicketsApi.getAll({}),
