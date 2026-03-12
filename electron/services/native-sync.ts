@@ -1093,15 +1093,15 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
     }
   }
 
-  // Status - try dedicated status fields first, fall back to stage value
-  // ConnectWise has separate stage and status but SSRS may combine them
+  // Status - separate from stage (e.g., "1. Open", "3. Won")
+  // SSRS field is "Status1" (numbered suffix from Tablix rendering)
   let status = '';
   const statusCandidates = [
+    entry.Status1,        // Primary - SSRS Tablix numbered field
     entry.Opp_Status,
     entry.OpportunityStatus,
     entry.Opportunity_Status,
     entry.Status_Description,
-    entry.Status,
   ];
 
   for (const candidate of statusCandidates) {
@@ -1113,11 +1113,6 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
         break;
       }
     }
-  }
-
-  // If no dedicated status field found, use stage value as status
-  if (!status && stage) {
-    status = stage;
   }
 
   // Expected revenue - try various field names
