@@ -194,6 +194,13 @@ async function executeSyncInBackground(
         // Pass feedId for adaptive sync (to look up linked detail feed)
         result = await syncProjects(feed.feedUrl, syncHistoryId, feed.id, abortController.signal);
       } else if (syncType === 'OPPORTUNITIES') {
+        // Auto-migrate stored Tablix3 → Tablix4 URL (Tablix3 returns summary, Tablix4 has detail rows)
+        if (feed.feedUrl.includes('Tablix3') && feed.feedUrl.includes('Opportunity')) {
+          const newUrl = feed.feedUrl.replace('Tablix3', 'Tablix4');
+          console.log('[Sync] Migrating stored opportunity feed URL from Tablix3 to Tablix4');
+          db.prepare("UPDATE atom_feeds SET feed_url = ?, updated_at = datetime('now') WHERE id = ?").run(newUrl, feed.id);
+          feed.feedUrl = newUrl;
+        }
         result = await syncOpportunities(feed.feedUrl, syncHistoryId, abortController.signal);
       } else {
         result = await syncServiceTickets(feed.feedUrl, syncHistoryId, abortController.signal);

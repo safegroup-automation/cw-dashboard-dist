@@ -549,6 +549,12 @@ export async function syncOpportunities(
       dynamicUrl = injectLocationFilter(dynamicUrl, syncLocations);
     }
 
+    // Auto-migrate Tablix3 → Tablix4 in the feed URL (Tablix3 returns summary data, Tablix4 has detail rows)
+    if (dynamicUrl.includes('Tablix3') && dynamicUrl.includes('Opportunity')) {
+      console.log('[NativeSync] Migrating opportunity feed URL from Tablix3 to Tablix4');
+      dynamicUrl = dynamicUrl.replace('Tablix3', 'Tablix4');
+    }
+
     console.log(`[NativeSync] Opportunity feed URL (first 500 chars): ${dynamicUrl.substring(0, 500)}`);
 
     // Fetch the feed
@@ -993,22 +999,25 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
   // Try common field names - SSRS uses various naming conventions
   // ConnectWise typically uses Opp_RecID as the unique identifier
   // Also try numbered fields like ID1, Opp_RecID1, etc. which SSRS often generates
-  let externalId = entry.Opp_RecID || entry.Opp_RecID1 || entry.OppRecID ||
+  let externalId = entry.Opp_RecID2 || // Tablix4 field
+                   entry.Opp_RecID || entry.Opp_RecID1 || entry.OppRecID ||
                    entry.Opportunity_RecID || entry.OpportunityRecID ||
                    entry.ID || entry.ID1 || entry.OpportunityID || entry.Opportunity_ID ||
                    entry.Id || entry.Opp_ID || entry.OppID || entry.RecID || entry.RecId ||
                    entry.opp_recid || entry.opportunity_id || // lowercase variants
                    '';
 
-  // Opportunity name - try various field names including numbered SSRS fields
+  // Opportunity name - try various field names including numbered SSRS Tablix fields
   const opportunityName = cleanHtmlEntities(
+    entry.Opportunity_Name2 ||  // Tablix4 field
     entry.Name || entry.Name1 || entry.Opp_Name || entry.OppName ||
     entry.OpportunityName || entry.Opportunity_Name || entry.Opportunity ||
     entry.Description || entry.Opp_Description || entry.Summary || ''
   );
 
-  // Company name - SSRS often uses Company_Name with underscore or numbered fields
+  // Company name - SSRS Tablix4 uses Company2
   const companyName = cleanHtmlEntities(
+    entry.Company2 ||           // Tablix4 field
     entry.Company_Name || entry.Company_Name1 || entry.Company || entry.Company1 ||
     entry.CompanyName || entry.Account || entry.Account_Name || entry.AccountName ||
     entry.Client || entry.ClientName || entry.Customer || ''
@@ -1049,6 +1058,7 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
   // IMPORTANT: Sales_Rep_1 (with underscore) is the actual sales rep, Sales_Rep is a list of all employees
   let salesRep = '';
   const salesRepCandidates = [
+    entry.Sales_Rep2,     // Tablix4 field
     entry.Sales_Rep_1,    // Primary field - actual sales rep (e.g., "Ben Jarman")
     entry.SalesRep1,      // Alternative without underscore
     entry.Primary_Sales_Rep,
@@ -1090,6 +1100,7 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
   // Apply same validation as sales rep to avoid picking up list fields
   let stage = '';
   const stageCandidates = [
+    entry.Sales_Stage2,   // Tablix4 field
     entry.Sales_Stage,
     entry.SalesStage,
     entry.Stage,
@@ -1115,7 +1126,8 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
   // SSRS field is "Status1" (numbered suffix from Tablix rendering)
   let status = '';
   const statusCandidates = [
-    entry.Status1,        // Primary - SSRS Tablix numbered field
+    entry.Status3,        // Tablix4 field (Status has suffix 3, not 2)
+    entry.Status1,        // Tablix3 field (fallback)
     entry.Opp_Status,
     entry.OpportunityStatus,
     entry.Opportunity_Status,
@@ -1134,17 +1146,19 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
   }
 
   // Debug: log stage and status resolution for first few entries
-  console.log(`[NativeSync] Opp "${opportunityName}": stage="${stage}", status="${status}", Status1="${entry.Status1 || 'N/A'}", Sales_Stage="${entry.Sales_Stage || 'N/A'}"`);
+  console.log(`[NativeSync] Opp "${opportunityName}": stage="${stage}", status="${status}", Status3="${entry.Status3 || 'N/A'}", Sales_Stage2="${entry.Sales_Stage2 || 'N/A'}"`);
 
   // Expected revenue - try various field names
   const expectedRevenue = parseNumber(
+    entry.Value2 ||          // Tablix4 field
     entry.Expected_Revenue || entry.ExpectedRevenue || entry.Revenue ||
     entry.Amount || entry.Opp_Amount || entry.Total || entry.Value
   );
 
   // Close date - try many variations
   // Primary field is Expected_Close_Date from SSRS Opportunity List report
-  const closeDate = entry.Expected_Close_Date || entry.ExpectedCloseDate ||
+  const closeDate = entry.Expected_Close_Date2 || // Tablix4 field
+                    entry.Expected_Close_Date || entry.ExpectedCloseDate ||
                     entry.Expected_Close || entry.Expected_Close1 || entry.ExpectedClose ||
                     entry.CloseDate || entry.Close_Date || entry.Close_Date1 ||
                     entry.Closed_Date || entry.ClosedDate || entry.Exp_Close || entry.ExpClose ||
@@ -1154,6 +1168,7 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
 
   // Probability - try many variations including percentage fields
   const probability = parseNumber(
+    entry.Probability2 ||    // Tablix4 field
     entry.Probability || entry.Probability1 || entry.Prob || entry.Prob1 ||
     entry.Win_Probability || entry.WinProbability || entry.Win_Prob || entry.WinProb ||
     entry.Opp_Probability || entry.OppProbability ||
