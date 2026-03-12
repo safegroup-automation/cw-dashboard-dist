@@ -166,6 +166,11 @@ export const electronOpportunitiesApi = {
     return api.opportunities.getStages();
   },
 
+  getStatuses: async (): Promise<string[]> => {
+    const api = getElectronAPI();
+    return api.opportunities.getStatuses();
+  },
+
   getSalesReps: async (): Promise<string[]> => {
     const api = getElectronAPI();
     return api.opportunities.getSalesReps();

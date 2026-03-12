@@ -3,7 +3,7 @@
  * Equivalent to the PostgreSQL schema from the original backend
  */
 
-export const SCHEMA_VERSION = 8;
+export const SCHEMA_VERSION = 9;
 
 export const createTablesSQL = `
 -- Projects table
@@ -179,6 +179,7 @@ export interface OpportunityRow {
   company_name: string | null;
   sales_rep: string | null;
   stage: string | null;
+  status: string | null;
   expected_revenue: number | null;
   close_date: string | null;
   probability: number | null;

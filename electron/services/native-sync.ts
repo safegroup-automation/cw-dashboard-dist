@@ -579,8 +579,8 @@ export async function syncOpportunities(
     let unchanged = 0;
 
     const insertStmt = db.prepare(`
-      INSERT INTO opportunities (external_id, opportunity_name, company_name, sales_rep, stage, expected_revenue, close_date, probability, notes, raw_data, updated_at)
-      VALUES (@external_id, @opportunity_name, @company_name, @sales_rep, @stage, @expected_revenue, @close_date, @probability, @notes, @raw_data, datetime('now'))
+      INSERT INTO opportunities (external_id, opportunity_name, company_name, sales_rep, stage, status, expected_revenue, close_date, probability, notes, raw_data, updated_at)
+      VALUES (@external_id, @opportunity_name, @company_name, @sales_rep, @stage, @status, @expected_revenue, @close_date, @probability, @notes, @raw_data, datetime('now'))
     `);
 
     const updateStmt = db.prepare(`
@@ -589,6 +589,7 @@ export async function syncOpportunities(
         company_name = @company_name,
         sales_rep = @sales_rep,
         stage = @stage,
+        status = @status,
         expected_revenue = @expected_revenue,
         close_date = @close_date,
         probability = @probability,
@@ -1066,7 +1067,7 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
     }
   }
 
-  // Stage - ConnectWise uses various stage/status fields
+  // Stage - ConnectWise pipeline stage (e.g., "1. Open", "3. Won")
   // Apply same validation as sales rep to avoid picking up list fields
   let stage = '';
   const stageCandidates = [
@@ -1074,9 +1075,6 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
     entry.SalesStage,
     entry.Stage,
     entry.Opp_Stage,
-    entry.Status,
-    entry.Opp_Status,
-    entry.Status_Description,
   ];
 
   for (const candidate of stageCandidates) {
@@ -1086,6 +1084,27 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
       const commaCount = (cleaned.match(/,/g) || []).length;
       if (commaCount === 0 && cleaned.length < 100) {
         stage = cleaned;
+        break;
+      }
+    }
+  }
+
+  // Status - separate from stage (e.g., "Open", "Won", "Lost")
+  let status = '';
+  const statusCandidates = [
+    entry.Status,
+    entry.Opp_Status,
+    entry.Status_Description,
+    entry.OpportunityStatus,
+    entry.Opportunity_Status,
+  ];
+
+  for (const candidate of statusCandidates) {
+    if (candidate) {
+      const cleaned = cleanHtmlEntities(String(candidate));
+      const commaCount = (cleaned.match(/,/g) || []).length;
+      if (commaCount === 0 && cleaned.length < 100) {
+        status = cleaned;
         break;
       }
     }
@@ -1124,6 +1143,7 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
     company_name: companyName || null,
     sales_rep: salesRep || null,
     stage: stage || null,
+    status: status || null,
     expected_revenue: expectedRevenue || null,
     close_date: closeDate || null,
     probability: probability !== null ? Math.round((probability > 1 ? probability : probability * 100)) : null,

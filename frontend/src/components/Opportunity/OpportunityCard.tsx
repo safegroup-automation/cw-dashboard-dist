@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pin, ChevronDown, ChevronUp, Calendar, Hash, DollarSign, User } from 'lucide-react';
 import { Opportunity } from '../../types';
-import { formatCurrency, formatDate, getStageColor } from '../../utils/formatting';
+import { formatCurrency, formatDate, getStageColor, getStageStyle, getOpportunityStatusColor } from '../../utils/formatting';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -28,9 +28,9 @@ export default function OpportunityCard({ opportunity, isPinned, onTogglePin, al
   return (
     <div
       onClick={handleClick}
-      className={`bg-board-bg border border-board-border rounded px-2 py-1.5 ${!alwaysExpanded ? 'cursor-pointer hover:bg-board-border/30' : ''} transition-all`}
+      className={`bg-board-bg border border-board-border border-l-2 ${getStageStyle(opportunity.stage)} rounded px-2 py-1.5 ${!alwaysExpanded ? 'cursor-pointer hover:bg-board-border/30' : ''} transition-all`}
     >
-      {/* Row 1: Company name, Pin, and Expected Revenue */}
+      {/* Row 1: Company name, Pin, Status */}
       <div className="flex items-center gap-2">
         <span className="text-[13px] font-semibold text-white truncate flex-1">
           {opportunity.companyName}
@@ -46,9 +46,11 @@ export default function OpportunityCard({ opportunity, isPinned, onTogglePin, al
             <Pin size={12} fill={isPinned ? 'currentColor' : 'none'} />
           </button>
         )}
-        <span className="text-[11px] font-semibold text-green-400 flex-shrink-0">
-          {formatCurrency(opportunity.expectedRevenue)}
-        </span>
+        {opportunity.status && (
+          <span className={`text-[11px] flex-shrink-0 ${getOpportunityStatusColor(opportunity.status)}`}>
+            {opportunity.status}
+          </span>
+        )}
         {!alwaysExpanded && (
           <button className="text-gray-500 p-0.5">
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -63,20 +65,23 @@ export default function OpportunityCard({ opportunity, isPinned, onTogglePin, al
         </span>
       </div>
 
-      {/* Row 3: Stage and Sales Rep */}
+      {/* Row 3: Stage, Revenue, Sales Rep, Probability */}
       <div className="flex items-center gap-2 mt-1">
         {opportunity.stage && (
           <span className={`text-[10px] px-1.5 py-0.5 rounded ${getStageColor(opportunity.stage)} text-white`}>
             {opportunity.stage}
           </span>
         )}
+        <span className="text-[11px] font-semibold text-green-400 flex-shrink-0">
+          {formatCurrency(opportunity.expectedRevenue)}
+        </span>
         {opportunity.salesRep && (
-          <span className="text-[10px] text-gray-500 truncate">
+          <span className="text-[10px] text-gray-500 truncate ml-auto">
             {opportunity.salesRep}
           </span>
         )}
         {opportunity.probability !== undefined && (
-          <span className="text-[10px] text-gray-500 ml-auto">
+          <span className="text-[10px] text-gray-500">
             {opportunity.probability}%
           </span>
         )}

@@ -288,6 +288,16 @@ async function runMigration(version: number): Promise<void> {
         console.log('hours_override column may already exist:', e);
       }
       break;
+    case 9:
+      // Add status column to opportunities (separate from stage)
+      console.log('Adding status column to opportunities table');
+      try {
+        db.exec('ALTER TABLE opportunities ADD COLUMN status TEXT');
+        db.exec('CREATE INDEX IF NOT EXISTS idx_opportunities_status ON opportunities(status)');
+      } catch (e) {
+        console.log('status column may already exist:', e);
+      }
+      break;
     default:
       console.log(`No migration needed for version ${version}`);
   }

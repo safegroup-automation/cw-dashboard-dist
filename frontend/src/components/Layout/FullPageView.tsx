@@ -55,8 +55,10 @@ export default function FullPageView({ type, isPinned, togglePin }: FullPageView
 
   // Opportunity-specific filters - default to "1. Open" stage
   const [stageFilter, setStageFilter] = useState(type === 'opportunities' ? '1. Open' : '');
+  const [oppStatusFilter, setOppStatusFilter] = useState('');
   const [salesRepFilter, setSalesRepFilter] = useState('');
   const [stages, setStages] = useState<string[]>([]);
+  const [oppStatuses, setOppStatuses] = useState<string[]>([]);
   const [salesReps, setSalesReps] = useState<string[]>([]);
 
   // Service ticket-specific filters
@@ -139,13 +141,15 @@ export default function FullPageView({ type, isPinned, togglePin }: FullPageView
           setProjects(data);
           setProjectStatuses(statusesData);
         } else if (type === 'opportunities') {
-          const [data, stagesData, repsData] = await Promise.all([
+          const [data, stagesData, statusesData, repsData] = await Promise.all([
             opportunitiesApi.getAll({}),
             opportunitiesApi.getStages(),
+            opportunitiesApi.getStatuses(),
             opportunitiesApi.getSalesReps(),
           ]);
           setOpportunities(data);
           setStages(stagesData);
+          setOppStatuses(statusesData);
           setSalesReps(repsData);
         } else if (type === 'service-tickets') {
           const [data, statusesData, prioritiesData, assigneesData] = await Promise.all([
@@ -216,6 +220,7 @@ export default function FullPageView({ type, isPinned, togglePin }: FullPageView
   const filteredOpportunities = useMemo(() => {
     return opportunities.filter(o => {
       if (stageFilter && o.stage !== stageFilter) return false;
+      if (oppStatusFilter && o.status !== oppStatusFilter) return false;
       if (salesRepFilter && o.salesRep !== salesRepFilter) return false;
       if (searchText.trim()) {
         const search = searchText.toLowerCase().trim();
@@ -225,7 +230,7 @@ export default function FullPageView({ type, isPinned, togglePin }: FullPageView
       }
       return true;
     });
-  }, [opportunities, stageFilter, salesRepFilter, searchText]);
+  }, [opportunities, stageFilter, oppStatusFilter, salesRepFilter, searchText]);
 
   // Filter service tickets
   const filteredServiceTickets = useMemo(() => {
@@ -247,7 +252,7 @@ export default function FullPageView({ type, isPinned, togglePin }: FullPageView
   const hasActiveFilters = type === 'projects'
     ? statusFilter !== '' || pmFilter !== '' || searchText.trim() !== '' || showInactive
     : type === 'opportunities'
-    ? stageFilter !== '' || salesRepFilter !== '' || searchText.trim() !== ''
+    ? stageFilter !== '' || oppStatusFilter !== '' || salesRepFilter !== '' || searchText.trim() !== ''
     : ticketStatusFilter !== '' || priorityFilter !== '' || assigneeFilter !== '' || searchText.trim() !== '';
 
   const items = type === 'projects'
@@ -313,6 +318,9 @@ export default function FullPageView({ type, isPinned, togglePin }: FullPageView
               stageFilter={stageFilter}
               setStageFilter={setStageFilter}
               stages={stages}
+              statusFilter={oppStatusFilter}
+              setStatusFilter={setOppStatusFilter}
+              statuses={oppStatuses}
               salesRepFilter={salesRepFilter}
               setSalesRepFilter={setSalesRepFilter}
               salesReps={salesReps}

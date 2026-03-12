@@ -56,6 +56,10 @@ export const opportunitiesApi = {
     return api.get<string[]>('/opportunities/stages');
   },
 
+  getStatuses: async (): Promise<string[]> => {
+    return api.get<string[]>('/opportunities/statuses');
+  },
+
   getSalesReps: async (): Promise<string[]> => {
     return api.get<string[]>('/opportunities/sales-reps');
   },

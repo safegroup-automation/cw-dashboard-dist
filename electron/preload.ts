@@ -19,6 +19,7 @@ export interface ElectronAPI {
     getById: (id: number) => Promise<Opportunity | null>;
     getByExternalId: (externalId: string) => Promise<Opportunity | null>;
     getStages: () => Promise<string[]>;
+    getStatuses: () => Promise<string[]>;
     getSalesReps: () => Promise<string[]>;
     clearAll: () => Promise<ClearDataResult>;
   };
@@ -590,6 +591,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getById: (id: number) => ipcRenderer.invoke('opportunities:getById', id),
     getByExternalId: (externalId: string) => ipcRenderer.invoke('opportunities:getByExternalId', externalId),
     getStages: () => ipcRenderer.invoke('opportunities:getStages'),
+    getStatuses: () => ipcRenderer.invoke('opportunities:getStatuses'),
     getSalesReps: () => ipcRenderer.invoke('opportunities:getSalesReps'),
     clearAll: () => ipcRenderer.invoke('opportunities:clearAll'),
   },

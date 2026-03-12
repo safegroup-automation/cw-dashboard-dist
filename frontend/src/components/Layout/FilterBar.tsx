@@ -75,6 +75,9 @@ interface OpportunityFiltersProps {
   stageFilter: string;
   setStageFilter: (value: string) => void;
   stages: string[];
+  statusFilter: string;
+  setStatusFilter: (value: string) => void;
+  statuses: string[];
   salesRepFilter: string;
   setSalesRepFilter: (value: string) => void;
   salesReps: string[];
@@ -84,6 +87,9 @@ export function OpportunityFilters({
   stageFilter,
   setStageFilter,
   stages,
+  statusFilter,
+  setStatusFilter,
+  statuses,
   salesRepFilter,
   setSalesRepFilter,
   salesReps,
@@ -95,6 +101,13 @@ export function OpportunityFilters({
         onChange={setStageFilter}
         options={stages}
         label="All Stages"
+        accentColor="emerald"
+      />
+      <FilterSelect
+        value={statusFilter}
+        onChange={setStatusFilter}
+        options={statuses}
+        label="All Statuses"
         accentColor="emerald"
       />
       <FilterSelect

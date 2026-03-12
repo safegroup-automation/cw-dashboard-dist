@@ -83,6 +83,10 @@ export function registerIpcHandlers(): void {
     return opportunityService.getStages();
   });
 
+  ipcMain.handle('opportunities:getStatuses', async () => {
+    return opportunityService.getStatuses();
+  });
+
   ipcMain.handle('opportunities:getSalesReps', async () => {
     return opportunityService.getSalesReps();
   });

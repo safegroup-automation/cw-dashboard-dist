@@ -142,11 +142,41 @@ export const PROJECT_STATUS_COLORS: Record<string, string> = {
 export function getStageColor(stage: string | undefined | null): string {
   if (!stage) return 'bg-gray-500';
   const stageLower = stage.toLowerCase();
+  if (stageLower.startsWith('1.') || stageLower.includes('open')) return 'bg-emerald-500';
+  if (stageLower.startsWith('2.') || stageLower.includes('approved')) return 'bg-blue-500';
+  if (stageLower.startsWith('3.') || stageLower.includes('won')) return 'bg-green-600';
+  if (stageLower.startsWith('4') || stageLower.includes('lost') || stageLower.includes('cancelled')) return 'bg-red-500';
+  if (stageLower.startsWith('5.') || stageLower.includes('no-bid') || stageLower.includes('no bid')) return 'bg-gray-500';
   if (stageLower.includes('lead')) return 'bg-blue-500';
   if (stageLower.includes('quot')) return 'bg-purple-500';
-  if (stageLower.includes('won')) return 'bg-green-500';
-  if (stageLower.includes('lost')) return 'bg-red-500';
   return 'bg-gray-500';
+}
+
+/**
+ * Get opportunity stage border style (left border color)
+ */
+export function getStageStyle(stage: string | undefined | null): string {
+  if (!stage) return 'border-l-gray-500';
+  const stageLower = stage.toLowerCase();
+  if (stageLower.startsWith('1.') || stageLower.includes('open')) return 'border-l-emerald-500';
+  if (stageLower.startsWith('2.') || stageLower.includes('approved')) return 'border-l-blue-500';
+  if (stageLower.startsWith('3.') || stageLower.includes('won')) return 'border-l-green-600';
+  if (stageLower.startsWith('4') || stageLower.includes('lost') || stageLower.includes('cancelled')) return 'border-l-red-500';
+  if (stageLower.startsWith('5.') || stageLower.includes('no-bid') || stageLower.includes('no bid')) return 'border-l-gray-500';
+  return 'border-l-gray-500';
+}
+
+/**
+ * Get opportunity status text color
+ */
+export function getOpportunityStatusColor(status: string | undefined | null): string {
+  if (!status) return 'text-gray-400';
+  const s = status.toLowerCase();
+  if (s.includes('open') || s.includes('active')) return 'text-emerald-400';
+  if (s.includes('won')) return 'text-green-400';
+  if (s.includes('lost') || s.includes('cancelled') || s.includes('canceled')) return 'text-red-400';
+  if (s.includes('closed')) return 'text-gray-400';
+  return 'text-gray-400';
 }
 
 /**

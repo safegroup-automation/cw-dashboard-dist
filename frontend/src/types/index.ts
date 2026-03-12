@@ -138,6 +138,7 @@ export interface Opportunity {
   companyName: string;
   salesRep?: string;
   stage?: string;
+  status?: string;
   expectedRevenue?: number;
   closeDate?: string;
   probability?: number;
@@ -185,6 +186,7 @@ export interface OpportunityAPI {
   company_name: string;
   sales_rep?: string;
   stage?: string;
+  status?: string;
   expected_revenue?: number;
   close_date?: string;
   probability?: number;
@@ -229,6 +231,7 @@ export function transformOpportunity(api: OpportunityAPI): Opportunity {
     companyName: api.company_name,
     salesRep: api.sales_rep,
     stage: api.stage,
+    status: api.status,
     expectedRevenue: api.expected_revenue,
     closeDate: api.close_date,
     probability: api.probability,

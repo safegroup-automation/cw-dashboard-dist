@@ -8,6 +8,7 @@ export interface Opportunity {
   companyName: string | null;
   salesRep: string | null;
   stage: string | null;
+  status: string | null;
   expectedRevenue: number | null;
   closeDate: string | null;
   probability: number | null;
@@ -40,6 +41,7 @@ function transformRow(row: OpportunityRow): Opportunity {
     companyName: row.company_name,
     salesRep: row.sales_rep,
     stage: row.stage,
+    status: row.status,
     expectedRevenue: row.expected_revenue,
     closeDate: row.close_date,
     probability: row.probability,
@@ -107,6 +109,15 @@ export function getStages(): string[] {
 }
 
 /**
+ * Get all unique statuses
+ */
+export function getStatuses(): string[] {
+  const db = getDatabase();
+  const rows = db.prepare('SELECT DISTINCT status FROM opportunities WHERE status IS NOT NULL ORDER BY status').all() as { status: string }[];
+  return rows.map((r) => r.status);
+}
+
+/**
  * Get all unique sales reps
  */
 export function getSalesReps(): string[] {
@@ -132,6 +143,7 @@ export function upsert(opportunity: Omit<Opportunity, 'id' | 'createdAt' | 'upda
         company_name = ?,
         sales_rep = ?,
         stage = ?,
+        status = ?,
         expected_revenue = ?,
         close_date = ?,
         probability = ?,
@@ -144,6 +156,7 @@ export function upsert(opportunity: Omit<Opportunity, 'id' | 'createdAt' | 'upda
       opportunity.companyName,
       opportunity.salesRep,
       opportunity.stage,
+      opportunity.status,
       opportunity.expectedRevenue,
       opportunity.closeDate,
       opportunity.probability,
@@ -157,15 +170,16 @@ export function upsert(opportunity: Omit<Opportunity, 'id' | 'createdAt' | 'upda
     // Insert
     const result = db.prepare(`
       INSERT INTO opportunities (
-        external_id, opportunity_name, company_name, sales_rep, stage,
+        external_id, opportunity_name, company_name, sales_rep, stage, status,
         expected_revenue, close_date, probability, notes, raw_data
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       opportunity.externalId,
       opportunity.opportunityName,
       opportunity.companyName,
       opportunity.salesRep,
       opportunity.stage,
+      opportunity.status,
       opportunity.expectedRevenue,
       opportunity.closeDate,
       opportunity.probability,
