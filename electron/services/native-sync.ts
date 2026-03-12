@@ -1067,7 +1067,8 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
     }
   }
 
-  // Stage - ConnectWise pipeline stage (e.g., "1. Open", "3. Won")
+  // Stage - ConnectWise pipeline stage
+  // The SSRS field may be called "Sales_Stage", "Stage", or even "Status"
   // Apply same validation as sales rep to avoid picking up list fields
   let stage = '';
   const stageCandidates = [
@@ -1075,6 +1076,9 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
     entry.SalesStage,
     entry.Stage,
     entry.Opp_Stage,
+    entry.Status,         // SSRS often puts stage values in a "Status" field
+    entry.Opp_Status,
+    entry.Status_Description,
   ];
 
   for (const candidate of stageCandidates) {
@@ -1089,14 +1093,15 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
     }
   }
 
-  // Status - separate from stage (e.g., "Open", "Won", "Lost")
+  // Status - try dedicated status fields first, fall back to stage value
+  // ConnectWise has separate stage and status but SSRS may combine them
   let status = '';
   const statusCandidates = [
-    entry.Status,
     entry.Opp_Status,
-    entry.Status_Description,
     entry.OpportunityStatus,
     entry.Opportunity_Status,
+    entry.Status_Description,
+    entry.Status,
   ];
 
   for (const candidate of statusCandidates) {
@@ -1108,6 +1113,11 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
         break;
       }
     }
+  }
+
+  // If no dedicated status field found, use stage value as status
+  if (!status && stage) {
+    status = stage;
   }
 
   // Expected revenue - try various field names

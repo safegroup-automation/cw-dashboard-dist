@@ -30,10 +30,10 @@ export default function OpportunityCard({ opportunity, isPinned, onTogglePin, al
       onClick={handleClick}
       className={`bg-board-bg border border-board-border border-l-2 ${getStageStyle(opportunity.stage)} rounded px-2 py-1.5 ${!alwaysExpanded ? 'cursor-pointer hover:bg-board-border/30' : ''} transition-all`}
     >
-      {/* Row 1: Company name, Pin, Status */}
+      {/* Row 1: Opportunity name, Pin, Status */}
       <div className="flex items-center gap-2">
         <span className="text-[13px] font-semibold text-white truncate flex-1">
-          {opportunity.companyName}
+          {opportunity.opportunityName}
         </span>
         {onTogglePin && (
           <button
@@ -58,10 +58,10 @@ export default function OpportunityCard({ opportunity, isPinned, onTogglePin, al
         )}
       </div>
 
-      {/* Row 2: Opportunity name */}
+      {/* Row 2: Company name */}
       <div className="mt-0.5">
         <span className="text-xs text-gray-400 truncate block">
-          {opportunity.opportunityName}
+          {opportunity.companyName}
         </span>
       </div>
 
