@@ -55,6 +55,15 @@ export function registerIpcHandlers(): void {
     return projectService.getAvailableDetailFields();
   });
 
+  ipcMain.handle('projects:updateHoursOverride', async (_, id: unknown, hoursOverride: unknown) => {
+    const validId = validateId(id);
+    const validHours = hoursOverride === null ? null : Number(hoursOverride);
+    if (validHours !== null && isNaN(validHours)) {
+      throw new Error('Invalid hoursOverride: must be a number or null');
+    }
+    return projectService.updateHoursOverride(validId, validHours);
+  });
+
   // ============================================
   // Opportunities
   // ============================================

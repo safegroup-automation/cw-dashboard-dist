@@ -11,6 +11,7 @@ export interface Project {
   hoursEstimate: number | null;
   hoursActual: number | null;
   hoursRemaining: number | null;
+  hoursOverride: number | null;
   status: string;
   isActive: boolean;
   notes: string | null;
@@ -21,6 +22,7 @@ export interface Project {
   // Computed fields
   budgetRemaining: number | null;
   budgetPercentUsed: number | null;
+  hoursPercentUsed: number | null;
 }
 
 export interface ProjectQueryOptions {
@@ -36,6 +38,8 @@ export interface ProjectQueryOptions {
 function transformRow(row: ProjectRow): Project {
   const budget = row.budget;
   const spent = row.spent;
+  const effectiveHoursEstimate = row.hours_override ?? row.hours_estimate;
+  const hoursActual = row.hours_actual;
 
   return {
     id: row.id,
@@ -47,6 +51,7 @@ function transformRow(row: ProjectRow): Project {
     hoursEstimate: row.hours_estimate,
     hoursActual: row.hours_actual,
     hoursRemaining: row.hours_remaining,
+    hoursOverride: row.hours_override,
     status: row.status,
     isActive: row.is_active === 1,
     notes: row.notes,
@@ -57,6 +62,9 @@ function transformRow(row: ProjectRow): Project {
     // Computed fields
     budgetRemaining: budget !== null && spent !== null ? budget - spent : null,
     budgetPercentUsed: budget !== null && budget > 0 && spent !== null ? (spent / budget) * 100 : null,
+    hoursPercentUsed: effectiveHoursEstimate !== null && effectiveHoursEstimate > 0 && hoursActual !== null
+      ? (hoursActual / effectiveHoursEstimate) * 100
+      : null,
   };
 }
 
@@ -163,6 +171,17 @@ export function upsert(project: Omit<Project, 'id' | 'createdAt' | 'updatedAt' |
 
     return getById(result.lastInsertRowid as number)!;
   }
+}
+
+/**
+ * Update hours override for a project (persists across syncs)
+ * Pass null to clear the override and use the synced value
+ */
+export function updateHoursOverride(id: number, hoursOverride: number | null): Project | null {
+  const db = getDatabase();
+  db.prepare("UPDATE projects SET hours_override = ?, updated_at = datetime('now') WHERE id = ?")
+    .run(hoursOverride, id);
+  return getById(id);
 }
 
 /**

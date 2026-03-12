@@ -358,6 +358,7 @@ export default function FullPageView({ type, isPinned, togglePin }: FullPageView
                 onTogglePin={() => togglePin('projects', project.id)}
                 alwaysExpanded={viewMode === 'detailed'}
                 visibleDetailFields={visibleDetailFields}
+                onProjectUpdated={(updated) => setProjects(prev => prev.map(p => p.id === updated.id ? updated : p))}
               />
             ))}
             {type === 'opportunities' && filteredOpportunities.map((opportunity) => (

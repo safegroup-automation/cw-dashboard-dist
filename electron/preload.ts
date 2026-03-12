@@ -10,6 +10,7 @@ export interface ElectronAPI {
     clearAll: () => Promise<ClearDataResult>;
     getAvailableDetailFields: () => Promise<string[]>;
     getDetailSyncDiagnostics: () => Promise<ProjectDetailDiagnostics>;
+    updateHoursOverride: (id: number, hoursOverride: number | null) => Promise<Project | null>;
   };
 
   // Opportunities
@@ -187,6 +188,7 @@ interface Project {
   hoursEstimate: number | null;
   hoursActual: number | null;
   hoursRemaining: number | null;
+  hoursOverride: number | null;
   status: string;
   isActive: boolean;
   notes: string | null;
@@ -196,6 +198,7 @@ interface Project {
   updatedAt: string;
   budgetRemaining?: number;
   budgetPercentUsed?: number;
+  hoursPercentUsed?: number;
 }
 
 interface Opportunity {
@@ -578,6 +581,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     clearAll: () => ipcRenderer.invoke('projects:clearAll'),
     getAvailableDetailFields: () => ipcRenderer.invoke('projects:getAvailableDetailFields'),
     getDetailSyncDiagnostics: () => ipcRenderer.invoke('projects:getDetailSyncDiagnostics'),
+    updateHoursOverride: (id: number, hoursOverride: number | null) => ipcRenderer.invoke('projects:updateHoursOverride', id, hoursOverride),
   },
 
   // Opportunities

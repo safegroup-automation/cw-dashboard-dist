@@ -258,6 +258,7 @@ async function runMigration(version: number): Promise<void> {
       break;
     case 7:
       // Fix SSRS report paths after reports were moved to Project Reviews subfolder
+      // (Migration preserved from v2.7.3)
       console.log('Updating feed URLs for moved SSRS reports');
       try {
         const oldPath = '%2FProject%20Management%2FProject%20Manager%20Summary%20Report';
@@ -276,6 +277,15 @@ async function runMigration(version: number): Promise<void> {
         console.log(`Updated ${updated2.changes} project detail feed URL(s)`);
       } catch (e) {
         console.error('Error updating feed URLs:', e);
+      }
+      break;
+    case 8:
+      // Add hours_override column for user-overridden hours estimates
+      console.log('Adding hours_override column to projects table');
+      try {
+        db.exec('ALTER TABLE projects ADD COLUMN hours_override REAL');
+      } catch (e) {
+        console.log('hours_override column may already exist:', e);
       }
       break;
     default:

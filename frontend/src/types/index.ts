@@ -118,6 +118,7 @@ export interface Project {
   hoursEstimate?: number;
   hoursActual?: number;
   hoursRemaining?: number;
+  hoursOverride?: number | null;
   status: string;
   isActive: boolean;
   notes?: string;
@@ -125,6 +126,7 @@ export interface Project {
   detailRawData?: string;
   budgetRemaining?: number;
   budgetPercentUsed?: number;
+  hoursPercentUsed?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -163,6 +165,7 @@ export interface ProjectAPI {
   hours_estimate?: number;
   hours_actual?: number;
   hours_remaining?: number;
+  hours_override?: number | null;
   status: string;
   is_active: boolean;
   notes?: string;
@@ -170,6 +173,7 @@ export interface ProjectAPI {
   detail_raw_data?: string;
   budget_remaining?: number;
   budget_percent_used?: number;
+  hours_percent_used?: number;
   created_at: string;
   updated_at: string;
 }
@@ -203,6 +207,7 @@ export function transformProject(api: ProjectAPI): Project {
     hoursEstimate: api.hours_estimate,
     hoursActual: api.hours_actual,
     hoursRemaining: api.hours_remaining,
+    hoursOverride: api.hours_override,
     status: api.status,
     isActive: api.is_active,
     notes: api.notes,
@@ -210,6 +215,7 @@ export function transformProject(api: ProjectAPI): Project {
     detailRawData: api.detail_raw_data,
     budgetRemaining: api.budget_remaining,
     budgetPercentUsed: api.budget_percent_used,
+    hoursPercentUsed: api.hours_percent_used,
     createdAt: api.created_at,
     updatedAt: api.updated_at,
   };

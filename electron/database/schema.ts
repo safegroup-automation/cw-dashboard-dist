@@ -3,7 +3,7 @@
  * Equivalent to the PostgreSQL schema from the original backend
  */
 
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 export const createTablesSQL = `
 -- Projects table
@@ -167,6 +167,7 @@ export interface ProjectRow {
   notes: string | null;
   raw_data: string | null;
   detail_raw_data: string | null;
+  hours_override: number | null;
   created_at: string;
   updated_at: string;
 }

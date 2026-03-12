@@ -97,6 +97,13 @@ export const electronProjectsApi = {
     const api = getElectronAPI();
     return api.projects.getDetailSyncDiagnostics();
   },
+
+  updateHoursOverride: async (id: number, hoursOverride: number | null): Promise<Project> => {
+    const api = getElectronAPI();
+    const project = await api.projects.updateHoursOverride(id, hoursOverride);
+    if (!project) throw new Error(`Project with ID ${id} not found`);
+    return project;
+  },
 };
 
 export interface ProjectDetailDiagnostics {

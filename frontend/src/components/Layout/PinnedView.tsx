@@ -208,6 +208,7 @@ export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinned
                   isPinned={true}
                   onTogglePin={() => togglePin('projects', project.id)}
                   visibleDetailFields={visibleDetailFields}
+                  onProjectUpdated={(updated) => setProjects(prev => prev.map(p => p.id === updated.id ? updated : p))}
                 />
               ))}
             </div>
