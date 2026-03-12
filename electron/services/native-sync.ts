@@ -579,9 +579,12 @@ export async function syncOpportunities(
       .slice(0, 15);
     console.log('[NativeSync] Sample opportunity status/stage fields:', JSON.stringify(Object.fromEntries(statusFields)));
 
+    console.log(`[NativeSync] Opportunity feed returned ${entries.length} entries`);
+
     let created = 0;
     let updated = 0;
     let unchanged = 0;
+    let errors = 0;
 
     const insertStmt = db.prepare(`
       INSERT INTO opportunities (external_id, opportunity_name, company_name, sales_rep, stage, status, expected_revenue, close_date, probability, notes, raw_data, updated_at)
@@ -672,9 +675,13 @@ export async function syncOpportunities(
           created++;
         }
       } catch (err) {
-        console.error(`[NativeSync] Error processing opportunity entry:`, err);
+        errors++;
+        const mapped2 = mapOpportunityEntry(entry, i);
+        console.error(`[NativeSync] Error processing opportunity entry ${i} (external_id=${mapped2.external_id}):`, err);
       }
     }
+
+    console.log(`[NativeSync] Opportunity sync results: ${entries.length} total, ${created} created, ${updated} updated, ${unchanged} unchanged, ${errors} errors`);
 
     return {
       success: true,

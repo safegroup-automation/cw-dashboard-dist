@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Pin, FolderKanban, TrendingUp, Ticket, Clock, LayoutGrid, List } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Pin, FolderKanban, TrendingUp, Ticket, Clock, LayoutGrid, List, ChevronUp, ChevronDown, Search } from 'lucide-react';
 import { Project, Opportunity, ServiceTicket } from '../../types';
 import { projects as projectsApi, opportunities as opportunitiesApi, serviceTickets as serviceTicketsApi, isElectron, settings, sync, events } from '../../api';
 import { formatLastSync } from './FullPageViewHeader';
@@ -27,58 +27,269 @@ interface SyncStatusState {
   serviceTickets: string | null;
 }
 
-function ProjectListRow({ project, onTogglePin }: { project: Project; onTogglePin: () => void }) {
-  const hoursEst = project.hoursOverride ?? project.hoursEstimate;
-  const pct = hoursEst && hoursEst > 0 && project.hoursActual != null
-    ? Math.round((project.hoursActual / hoursEst) * 100) : null;
-  const pctColor = pct === null ? '' : pct >= 100 ? 'text-red-400' : pct >= 80 ? 'text-yellow-400' : 'text-green-400';
+// ============================================
+// Sort helpers
+// ============================================
+type SortDir = 'asc' | 'desc';
+
+interface SortState<T extends string> {
+  col: T;
+  dir: SortDir;
+}
+
+function SortHeader<T extends string>({ label, col, sort, onSort, className }: {
+  label: string;
+  col: T;
+  sort: SortState<T>;
+  onSort: (col: T) => void;
+  className?: string;
+}) {
+  const active = sort.col === col;
+  return (
+    <th
+      className={`px-2 py-1.5 text-left text-[11px] font-medium text-gray-400 cursor-pointer select-none hover:text-gray-200 whitespace-nowrap ${className || ''}`}
+      onClick={() => onSort(col)}
+    >
+      <span className="inline-flex items-center gap-0.5">
+        {label}
+        {active && (sort.dir === 'asc' ? <ChevronUp size={10} /> : <ChevronDown size={10} />)}
+      </span>
+    </th>
+  );
+}
+
+function toggleSort<T extends string>(prev: SortState<T>, col: T): SortState<T> {
+  if (prev.col === col) return { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
+  return { col, dir: 'asc' };
+}
+
+function cmp(a: unknown, b: unknown): number {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a).localeCompare(String(b));
+}
+
+// ============================================
+// Project list table
+// ============================================
+type ProjectSortCol = 'name' | 'client' | 'status' | 'pct' | 'hours';
+
+function ProjectListTable({ projects, togglePin, searchText }: { projects: Project[]; togglePin: (id: number) => void; searchText: string }) {
+  const [sort, setSort] = useState<SortState<ProjectSortCol>>({ col: 'name', dir: 'asc' });
+
+  const sorted = useMemo(() => {
+    const filtered = searchText
+      ? projects.filter(p => `${p.projectName} ${p.clientName} ${p.status}`.toLowerCase().includes(searchText.toLowerCase()))
+      : projects;
+
+    return [...filtered].sort((a, b) => {
+      let v: number;
+      const aEst = a.hoursOverride ?? a.hoursEstimate;
+      const bEst = b.hoursOverride ?? b.hoursEstimate;
+      const aPct = aEst && aEst > 0 && a.hoursActual != null ? a.hoursActual / aEst : null;
+      const bPct = bEst && bEst > 0 && b.hoursActual != null ? b.hoursActual / bEst : null;
+
+      switch (sort.col) {
+        case 'name': v = cmp(a.projectName, b.projectName); break;
+        case 'client': v = cmp(a.clientName, b.clientName); break;
+        case 'status': v = cmp(a.status, b.status); break;
+        case 'pct': v = cmp(aPct, bPct); break;
+        case 'hours': v = cmp(a.hoursActual, b.hoursActual); break;
+        default: v = 0;
+      }
+      return sort.dir === 'desc' ? -v : v;
+    });
+  }, [projects, sort, searchText]);
+
+  const onSort = useCallback((col: ProjectSortCol) => setSort(prev => toggleSort(prev, col)), []);
 
   return (
-    <div className="flex items-center gap-3 px-3 py-1.5 hover:bg-board-border/30 border-b border-board-border/50 text-sm">
-      <button onClick={() => onTogglePin()} className="text-blue-400 p-0.5 flex-shrink-0"><Pin size={12} fill="currentColor" /></button>
-      <span className="text-white truncate flex-1 min-w-0 font-medium">{project.projectName}</span>
-      <span className="text-gray-400 truncate max-w-[180px] text-xs">{project.clientName}</span>
-      <span className={`text-xs px-1.5 py-0.5 rounded ${getProjectStatusColor(project.status)}`}>{project.status}</span>
-      {pct !== null && <span className={`text-xs w-12 text-right ${pctColor}`}>{pct}%</span>}
-      {project.hoursActual != null && <span className="text-xs text-gray-500 w-16 text-right">{formatHours(project.hoursActual)}/{formatHours(hoursEst)}</span>}
+    <div className="bg-board-bg border border-board-border rounded overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-board-panel border-b border-board-border">
+          <tr>
+            <th className="w-8 px-2 py-1.5"></th>
+            <SortHeader label="Project" col="name" sort={sort} onSort={onSort} />
+            <SortHeader label="Client" col="client" sort={sort} onSort={onSort} />
+            <SortHeader label="Status" col="status" sort={sort} onSort={onSort} />
+            <SortHeader label="%" col="pct" sort={sort} onSort={onSort} className="text-right" />
+            <SortHeader label="Hours" col="hours" sort={sort} onSort={onSort} className="text-right" />
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(project => {
+            const hoursEst = project.hoursOverride ?? project.hoursEstimate;
+            const pct = hoursEst && hoursEst > 0 && project.hoursActual != null
+              ? Math.round((project.hoursActual / hoursEst) * 100) : null;
+            const pctColor = pct === null ? '' : pct >= 100 ? 'text-red-400' : pct >= 80 ? 'text-yellow-400' : 'text-green-400';
+
+            return (
+              <tr key={project.id} className="border-b border-board-border/50 hover:bg-board-border/30">
+                <td className="px-2 py-1.5">
+                  <button onClick={() => togglePin(project.id)} className="text-blue-400 p-0.5"><Pin size={12} fill="currentColor" /></button>
+                </td>
+                <td className="px-2 py-1.5 text-white font-medium truncate max-w-[300px]">{project.projectName}</td>
+                <td className="px-2 py-1.5 text-gray-400 text-xs truncate max-w-[200px]">{project.clientName}</td>
+                <td className="px-2 py-1.5"><span className={`text-xs px-1.5 py-0.5 rounded ${getProjectStatusColor(project.status)}`}>{project.status}</span></td>
+                <td className={`px-2 py-1.5 text-xs text-right ${pctColor}`}>{pct !== null ? `${pct}%` : ''}</td>
+                <td className="px-2 py-1.5 text-xs text-gray-500 text-right">{project.hoursActual != null ? `${formatHours(project.hoursActual)}/${formatHours(hoursEst)}` : ''}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function OpportunityListRow({ opportunity, onTogglePin }: { opportunity: Opportunity; onTogglePin: () => void }) {
+// ============================================
+// Opportunity list table
+// ============================================
+type OpportunitySortCol = 'name' | 'company' | 'stage' | 'status' | 'revenue' | 'rep' | 'probability';
+
+function OpportunityListTable({ opportunities, togglePin, searchText }: { opportunities: Opportunity[]; togglePin: (id: number) => void; searchText: string }) {
+  const [sort, setSort] = useState<SortState<OpportunitySortCol>>({ col: 'name', dir: 'asc' });
+
+  const sorted = useMemo(() => {
+    const filtered = searchText
+      ? opportunities.filter(o => `${o.opportunityName} ${o.companyName} ${o.stage} ${o.status} ${o.salesRep}`.toLowerCase().includes(searchText.toLowerCase()))
+      : opportunities;
+
+    return [...filtered].sort((a, b) => {
+      let v: number;
+      switch (sort.col) {
+        case 'name': v = cmp(a.opportunityName, b.opportunityName); break;
+        case 'company': v = cmp(a.companyName, b.companyName); break;
+        case 'stage': v = cmp(a.stage, b.stage); break;
+        case 'status': v = cmp(a.status, b.status); break;
+        case 'revenue': v = cmp(a.expectedRevenue, b.expectedRevenue); break;
+        case 'rep': v = cmp(a.salesRep, b.salesRep); break;
+        case 'probability': v = cmp(a.probability, b.probability); break;
+        default: v = 0;
+      }
+      return sort.dir === 'desc' ? -v : v;
+    });
+  }, [opportunities, sort, searchText]);
+
+  const onSort = useCallback((col: OpportunitySortCol) => setSort(prev => toggleSort(prev, col)), []);
+
   return (
-    <div className="flex items-center gap-3 px-3 py-1.5 hover:bg-board-border/30 border-b border-board-border/50 text-sm">
-      <button onClick={() => onTogglePin()} className="text-blue-400 p-0.5 flex-shrink-0"><Pin size={12} fill="currentColor" /></button>
-      <span className="text-white truncate flex-1 min-w-0 font-medium">{opportunity.opportunityName}</span>
-      <span className="text-gray-400 truncate max-w-[180px] text-xs">{opportunity.companyName}</span>
-      {opportunity.stage && <span className={`text-[10px] px-1.5 py-0.5 rounded ${getStageColor(opportunity.stage)} text-white`}>{opportunity.stage}</span>}
-      {opportunity.status && <span className={`text-xs ${getOpportunityStatusColor(opportunity.status)}`}>{opportunity.status}</span>}
-      <span className="text-xs font-semibold text-green-400 w-20 text-right">{formatCurrency(opportunity.expectedRevenue)}</span>
-      {opportunity.salesRep && <span className="text-xs text-gray-500 truncate max-w-[100px]">{opportunity.salesRep}</span>}
+    <div className="bg-board-bg border border-board-border rounded overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-board-panel border-b border-board-border">
+          <tr>
+            <th className="w-8 px-2 py-1.5"></th>
+            <SortHeader label="Opportunity" col="name" sort={sort} onSort={onSort} />
+            <SortHeader label="Company" col="company" sort={sort} onSort={onSort} />
+            <SortHeader label="Stage" col="stage" sort={sort} onSort={onSort} />
+            <SortHeader label="Status" col="status" sort={sort} onSort={onSort} />
+            <SortHeader label="Revenue" col="revenue" sort={sort} onSort={onSort} className="text-right" />
+            <SortHeader label="Rep" col="rep" sort={sort} onSort={onSort} />
+            <SortHeader label="Prob" col="probability" sort={sort} onSort={onSort} className="text-right" />
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(opp => (
+            <tr key={opp.id} className="border-b border-board-border/50 hover:bg-board-border/30">
+              <td className="px-2 py-1.5">
+                <button onClick={() => togglePin(opp.id)} className="text-blue-400 p-0.5"><Pin size={12} fill="currentColor" /></button>
+              </td>
+              <td className="px-2 py-1.5 text-white font-medium truncate max-w-[300px]">{opp.opportunityName}</td>
+              <td className="px-2 py-1.5 text-gray-400 text-xs truncate max-w-[200px]">{opp.companyName}</td>
+              <td className="px-2 py-1.5">{opp.stage && <span className={`text-[10px] px-1.5 py-0.5 rounded ${getStageColor(opp.stage)} text-white`}>{opp.stage}</span>}</td>
+              <td className="px-2 py-1.5">{opp.status && <span className={`text-xs ${getOpportunityStatusColor(opp.status)}`}>{opp.status}</span>}</td>
+              <td className="px-2 py-1.5 text-xs font-semibold text-green-400 text-right">{formatCurrency(opp.expectedRevenue)}</td>
+              <td className="px-2 py-1.5 text-xs text-gray-500 truncate max-w-[120px]">{opp.salesRep}</td>
+              <td className="px-2 py-1.5 text-xs text-gray-500 text-right">{opp.probability != null ? `${opp.probability}%` : ''}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-function ServiceTicketListRow({ ticket, onTogglePin }: { ticket: ServiceTicket; onTogglePin: () => void }) {
-  const statusColors = getTicketStatusColor(ticket.status);
+// ============================================
+// Service ticket list table
+// ============================================
+type TicketSortCol = 'id' | 'summary' | 'company' | 'priority' | 'status' | 'assignee' | 'hours';
+
+function TicketListTable({ tickets, togglePin, searchText }: { tickets: ServiceTicket[]; togglePin: (id: number) => void; searchText: string }) {
+  const [sort, setSort] = useState<SortState<TicketSortCol>>({ col: 'id', dir: 'desc' });
+
+  const sorted = useMemo(() => {
+    const filtered = searchText
+      ? tickets.filter(t => `${t.summary} ${t.companyName} ${t.status} ${t.priority} ${t.assignedTo} ${t.externalId}`.toLowerCase().includes(searchText.toLowerCase()))
+      : tickets;
+
+    return [...filtered].sort((a, b) => {
+      let v: number;
+      switch (sort.col) {
+        case 'id': v = cmp(Number(a.externalId) || 0, Number(b.externalId) || 0); break;
+        case 'summary': v = cmp(a.summary, b.summary); break;
+        case 'company': v = cmp(a.companyName, b.companyName); break;
+        case 'priority': v = cmp(a.priority, b.priority); break;
+        case 'status': v = cmp(a.status, b.status); break;
+        case 'assignee': v = cmp(a.assignedTo, b.assignedTo); break;
+        case 'hours': v = cmp(a.hoursRemaining, b.hoursRemaining); break;
+        default: v = 0;
+      }
+      return sort.dir === 'desc' ? -v : v;
+    });
+  }, [tickets, sort, searchText]);
+
+  const onSort = useCallback((col: TicketSortCol) => setSort(prev => toggleSort(prev, col)), []);
+
   return (
-    <div className="flex items-center gap-3 px-3 py-1.5 hover:bg-board-border/30 border-b border-board-border/50 text-sm">
-      <button onClick={() => onTogglePin()} className="text-blue-400 p-0.5 flex-shrink-0"><Pin size={12} fill="currentColor" /></button>
-      <span className="text-[10px] font-mono text-gray-500 flex-shrink-0">#{ticket.externalId}</span>
-      <span className="text-white truncate flex-1 min-w-0 font-medium">{ticket.summary || 'No summary'}</span>
-      <span className="text-gray-400 truncate max-w-[180px] text-xs">{ticket.companyName}</span>
-      {ticket.priority && <span className={`text-[10px] px-1.5 py-0.5 rounded ${getPriorityColor(ticket.priority)}`}>{ticket.priority}</span>}
-      <span className={`text-xs ${statusColors.text}`}>{ticket.status}</span>
-      {ticket.assignedTo && <span className="text-xs text-gray-500 truncate max-w-[100px]">{ticket.assignedTo}</span>}
-      {ticket.hoursRemaining != null && <span className="text-xs text-gray-400 w-12 text-right">{formatHours(ticket.hoursRemaining)}h</span>}
+    <div className="bg-board-bg border border-board-border rounded overflow-hidden">
+      <table className="w-full text-sm">
+        <thead className="bg-board-panel border-b border-board-border">
+          <tr>
+            <th className="w-8 px-2 py-1.5"></th>
+            <SortHeader label="#" col="id" sort={sort} onSort={onSort} />
+            <SortHeader label="Summary" col="summary" sort={sort} onSort={onSort} />
+            <SortHeader label="Company" col="company" sort={sort} onSort={onSort} />
+            <SortHeader label="Priority" col="priority" sort={sort} onSort={onSort} />
+            <SortHeader label="Status" col="status" sort={sort} onSort={onSort} />
+            <SortHeader label="Assignee" col="assignee" sort={sort} onSort={onSort} />
+            <SortHeader label="Hrs Rem" col="hours" sort={sort} onSort={onSort} className="text-right" />
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map(ticket => {
+            const statusColors = getTicketStatusColor(ticket.status);
+            return (
+              <tr key={ticket.id} className="border-b border-board-border/50 hover:bg-board-border/30">
+                <td className="px-2 py-1.5">
+                  <button onClick={() => togglePin(ticket.id)} className="text-blue-400 p-0.5"><Pin size={12} fill="currentColor" /></button>
+                </td>
+                <td className="px-2 py-1.5 text-[10px] font-mono text-gray-500">#{ticket.externalId}</td>
+                <td className="px-2 py-1.5 text-white font-medium truncate max-w-[300px]">{ticket.summary || 'No summary'}</td>
+                <td className="px-2 py-1.5 text-gray-400 text-xs truncate max-w-[200px]">{ticket.companyName}</td>
+                <td className="px-2 py-1.5">{ticket.priority && <span className={`text-[10px] px-1.5 py-0.5 rounded ${getPriorityColor(ticket.priority)}`}>{ticket.priority}</span>}</td>
+                <td className="px-2 py-1.5"><span className={`text-xs ${statusColors.text}`}>{ticket.status}</span></td>
+                <td className="px-2 py-1.5 text-xs text-gray-500 truncate max-w-[120px]">{ticket.assignedTo}</td>
+                <td className="px-2 py-1.5 text-xs text-gray-400 text-right">{ticket.hoursRemaining != null ? `${formatHours(ticket.hoursRemaining)}` : ''}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
 
+// ============================================
+// Main PinnedView component
+// ============================================
 export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinnedServiceTickets, togglePin }: PinnedViewProps) {
   const [viewMode, setViewMode] = useState<'cards' | 'list'>(() => {
     try { return (localStorage.getItem('cw-dashboard-pinned-view') as 'cards' | 'list') || 'cards'; } catch { return 'cards'; }
   });
+  const [searchText, setSearchText] = useState('');
+
   const toggleViewMode = useCallback(() => {
     setViewMode(prev => {
       const next = prev === 'cards' ? 'list' : 'cards';
@@ -238,6 +449,18 @@ export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinned
             {viewMode === 'cards' ? <List size={14} /> : <LayoutGrid size={14} />}
             {viewMode === 'cards' ? 'List' : 'Cards'}
           </button>
+          {viewMode === 'list' && (
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder="Filter..."
+                className="pl-8 pr-3 py-1.5 text-sm bg-board-bg border border-board-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 w-48"
+              />
+            </div>
+          )}
         </div>
 
         {/* Sync status for all types */}
@@ -284,11 +507,7 @@ export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinned
                 ))}
               </div>
             ) : (
-              <div className="bg-board-bg border border-board-border rounded overflow-hidden">
-                {projects.map((project) => (
-                  <ProjectListRow key={project.id} project={project} onTogglePin={() => togglePin('projects', project.id)} />
-                ))}
-              </div>
+              <ProjectListTable projects={projects} togglePin={(id) => togglePin('projects', id)} searchText={searchText} />
             )}
           </section>
         )}
@@ -313,11 +532,7 @@ export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinned
                 ))}
               </div>
             ) : (
-              <div className="bg-board-bg border border-board-border rounded overflow-hidden">
-                {opportunities.map((opportunity) => (
-                  <OpportunityListRow key={opportunity.id} opportunity={opportunity} onTogglePin={() => togglePin('opportunities', opportunity.id)} />
-                ))}
-              </div>
+              <OpportunityListTable opportunities={opportunities} togglePin={(id) => togglePin('opportunities', id)} searchText={searchText} />
             )}
           </section>
         )}
@@ -342,11 +557,7 @@ export default function PinnedView({ pinnedProjects, pinnedOpportunities, pinned
                 ))}
               </div>
             ) : (
-              <div className="bg-board-bg border border-board-border rounded overflow-hidden">
-                {serviceTickets.map((ticket) => (
-                  <ServiceTicketListRow key={ticket.id} ticket={ticket} onTogglePin={() => togglePin('service-tickets', ticket.id)} />
-                ))}
-              </div>
+              <TicketListTable tickets={serviceTickets} togglePin={(id) => togglePin('service-tickets', id)} searchText={searchText} />
             )}
           </section>
         )}

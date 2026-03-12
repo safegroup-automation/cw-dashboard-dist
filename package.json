@@ -1,6 +1,6 @@
 {
   "name": "cw-dashboard",
-  "version": "2.9.9",
+  "version": "2.10.0",
   "description": "CW Dashboard - ConnectWise Project and Opportunity Tracker",
   "main": "dist-electron/main.js",
   "author": "Gaskony",

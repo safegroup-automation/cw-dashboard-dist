@@ -207,6 +207,12 @@ export function clearAll(): { deleted: number } {
   const db = getDatabase();
   const count = getCount();
   db.prepare('DELETE FROM opportunities').run();
-  console.log(`[Opportunities] Cleared ${count} records`);
+  const remaining = getCount();
+  console.log(`[Opportunities] Cleared ${count} records, ${remaining} remaining`);
+  if (remaining > 0) {
+    console.warn(`[Opportunities] WARNING: ${remaining} records remain after clear! Retrying...`);
+    db.prepare('DELETE FROM opportunities').run();
+    console.log(`[Opportunities] After retry: ${getCount()} remaining`);
+  }
   return { deleted: count };
 }
