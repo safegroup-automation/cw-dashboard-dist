@@ -549,13 +549,18 @@ export async function syncOpportunities(
       dynamicUrl = injectLocationFilter(dynamicUrl, syncLocations);
     }
 
+    console.log(`[NativeSync] Opportunity feed URL (first 500 chars): ${dynamicUrl.substring(0, 500)}`);
+
     // Fetch the feed
     const xmlContent = await fetchAtomFeed(dynamicUrl, signal);
+
+    console.log(`[NativeSync] Opportunity feed XML size: ${xmlContent.length} bytes`);
 
     // Parse entries
     const entries = await parseAtomFeed(xmlContent);
 
     if (entries.length === 0) {
+      console.warn('[NativeSync] Opportunity feed returned 0 entries!');
       return {
         success: true,
         total: 0,
