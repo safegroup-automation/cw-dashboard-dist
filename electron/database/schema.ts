@@ -3,7 +3,7 @@
  * Equivalent to the PostgreSQL schema from the original backend
  */
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 10;
 
 export const createTablesSQL = `
 -- Projects table
@@ -94,6 +94,7 @@ CREATE TABLE IF NOT EXISTS sync_history (
     records_created INTEGER DEFAULT 0,
     records_updated INTEGER DEFAULT 0,
     records_unchanged INTEGER DEFAULT 0,
+    records_removed INTEGER DEFAULT 0,
     error_message TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 );
@@ -200,6 +201,7 @@ export interface SyncHistoryRow {
   records_created: number;
   records_updated: number;
   records_unchanged: number;
+  records_removed: number;
   error_message: string | null;
   created_at: string;
 }

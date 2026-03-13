@@ -462,6 +462,7 @@ export interface SyncHistory {
   recordsCreated: number;
   recordsUpdated: number;
   recordsUnchanged: number;
+  recordsRemoved: number;
   errorMessage?: string;
   createdAt: string;
 }
@@ -472,7 +473,7 @@ export interface SyncChange {
   entityType: 'PROJECT' | 'OPPORTUNITY' | 'SERVICE_TICKET';
   entityId: number;
   externalId?: string;
-  changeType: 'CREATED' | 'UPDATED';
+  changeType: 'CREATED' | 'UPDATED' | 'REMOVED';
   fieldName?: string;
   oldValue?: string;
   newValue?: string;
@@ -506,7 +507,7 @@ export interface EntityChangeSummary {
   entityType: 'PROJECT' | 'OPPORTUNITY' | 'SERVICE_TICKET';
   entityId: number;
   externalId?: string;
-  changeType: 'CREATED' | 'UPDATED';
+  changeType: 'CREATED' | 'UPDATED' | 'REMOVED';
   fieldChanges: SyncChange[];
 }
 
@@ -522,6 +523,7 @@ export interface SyncHistoryAPI {
   records_created: number;
   records_updated: number;
   records_unchanged: number;
+  records_removed: number;
   error_message?: string;
   created_at: string;
 }
@@ -574,6 +576,7 @@ export function transformSyncHistory(api: SyncHistoryAPI): SyncHistory {
     recordsCreated: api.records_created,
     recordsUpdated: api.records_updated,
     recordsUnchanged: api.records_unchanged,
+    recordsRemoved: api.records_removed ?? 0,
     errorMessage: api.error_message,
     createdAt: api.created_at,
   };
@@ -586,7 +589,7 @@ export function transformSyncChange(api: SyncChangeAPI): SyncChange {
     entityType: api.entity_type as 'PROJECT' | 'OPPORTUNITY' | 'SERVICE_TICKET',
     entityId: api.entity_id,
     externalId: api.external_id,
-    changeType: api.change_type as 'CREATED' | 'UPDATED',
+    changeType: api.change_type as 'CREATED' | 'UPDATED' | 'REMOVED',
     fieldName: api.field_name,
     oldValue: api.old_value,
     newValue: api.new_value,

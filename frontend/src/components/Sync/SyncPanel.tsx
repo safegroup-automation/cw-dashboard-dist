@@ -119,7 +119,7 @@ function SyncHistoryCard({ sync, onCancel }: SyncHistoryCardProps) {
   }, [sync.status, sync.startedAt, sync.createdAt]);
 
   const handleToggle = async () => {
-    if (!expanded && changes.length === 0 && (sync.recordsCreated > 0 || sync.recordsUpdated > 0)) {
+    if (!expanded && changes.length === 0 && (sync.recordsCreated > 0 || sync.recordsUpdated > 0 || sync.recordsRemoved > 0)) {
       setLoadingChanges(true);
       try {
         const data = await syncApi.getChanges(sync.id);
@@ -171,7 +171,7 @@ function SyncHistoryCard({ sync, onCancel }: SyncHistoryCardProps) {
             {cancelling ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
           </button>
         )}
-        {(sync.recordsCreated > 0 || sync.recordsUpdated > 0) && (
+        {(sync.recordsCreated > 0 || sync.recordsUpdated > 0 || sync.recordsRemoved > 0) && (
           <button className="text-gray-500 p-0.5">
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
@@ -183,6 +183,7 @@ function SyncHistoryCard({ sync, onCancel }: SyncHistoryCardProps) {
         {sync.triggeredBy && <span>by {sync.triggeredBy}</span>}
         <span className="text-green-400">+{sync.recordsCreated} new</span>
         <span className="text-blue-400">{sync.recordsUpdated} updated</span>
+        {sync.recordsRemoved > 0 && <span className="text-red-400">-{sync.recordsRemoved} removed</span>}
         <span>{sync.recordsUnchanged} unchanged</span>
         {sync.errorMessage && <span className="text-red-400 truncate">{sync.errorMessage}</span>}
       </div>
@@ -203,7 +204,7 @@ function SyncHistoryCard({ sync, onCancel }: SyncHistoryCardProps) {
             <div key={idx} className="bg-board-panel/50 rounded p-2">
               <div className="flex items-center gap-2 mb-1">
                 <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                  entity.changeType === 'CREATED' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'
+                  entity.changeType === 'CREATED' ? 'bg-green-500/20 text-green-400' : entity.changeType === 'REMOVED' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
                 }`}>
                   {entity.changeType}
                 </span>

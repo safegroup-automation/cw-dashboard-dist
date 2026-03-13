@@ -298,6 +298,15 @@ async function runMigration(version: number): Promise<void> {
         console.log('status column may already exist:', e);
       }
       break;
+    case 10:
+      // Add records_removed column to sync_history for tracking stale record removal
+      console.log('Adding records_removed column to sync_history table');
+      try {
+        db.exec('ALTER TABLE sync_history ADD COLUMN records_removed INTEGER DEFAULT 0');
+      } catch (e) {
+        console.log('records_removed column may already exist:', e);
+      }
+      break;
     default:
       console.log(`No migration needed for version ${version}`);
   }

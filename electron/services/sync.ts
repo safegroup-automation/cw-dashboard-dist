@@ -179,6 +179,7 @@ async function executeSyncInBackground(
     let totalCreated = 0;
     let totalUpdated = 0;
     let totalUnchanged = 0;
+    let totalRemoved = 0;
 
     // Run native sync for each feed
     for (const feed of feeds) {
@@ -219,6 +220,7 @@ async function executeSyncInBackground(
       totalCreated += result.created;
       totalUpdated += result.updated;
       totalUnchanged += result.unchanged;
+      totalRemoved += result.removed;
 
       // Update feed last sync time
       db.prepare("UPDATE atom_feeds SET last_sync = datetime('now'), updated_at = datetime('now') WHERE id = ?").run(feed.id);
@@ -232,9 +234,10 @@ async function executeSyncInBackground(
         records_processed = ?,
         records_created = ?,
         records_updated = ?,
-        records_unchanged = ?
+        records_unchanged = ?,
+        records_removed = ?
       WHERE id = ?
-    `).run(totalProcessed, totalCreated, totalUpdated, totalUnchanged, syncHistoryId);
+    `).run(totalProcessed, totalCreated, totalUpdated, totalUnchanged, totalRemoved, syncHistoryId);
 
     if (window) {
       console.log('[Sync] Sending sync:completed event for', syncType);
@@ -245,12 +248,13 @@ async function executeSyncInBackground(
         recordsProcessed: totalProcessed,
         recordsCreated: totalCreated,
         recordsUpdated: totalUpdated,
+        recordsRemoved: totalRemoved,
       });
     } else {
       console.warn('[Sync] No window reference, cannot send sync:completed event');
     }
 
-    console.log(`[Sync] ${syncType} completed: ${totalProcessed} processed, ${totalCreated} created, ${totalUpdated} updated`);
+    console.log(`[Sync] ${syncType} completed: ${totalProcessed} processed, ${totalCreated} created, ${totalUpdated} updated, ${totalRemoved} removed`);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const isCancelled = errorMessage === 'Sync cancelled' || abortController.signal.aborted;

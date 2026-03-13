@@ -21,6 +21,7 @@ export interface SyncResult {
   created: number;
   updated: number;
   unchanged: number;
+  removed: number;
   error?: string;
 }
 
@@ -348,6 +349,7 @@ export async function syncProjects(
         created: 0,
         updated: 0,
         unchanged: 0,
+        removed: 0,
       };
     }
 
@@ -513,6 +515,7 @@ export async function syncProjects(
       created,
       updated,
       unchanged,
+      removed: 0,
     };
   } catch (error) {
     console.error('[NativeSync] Project sync failed:', error);
@@ -522,6 +525,7 @@ export async function syncProjects(
       created: 0,
       updated: 0,
       unchanged: 0,
+      removed: 0,
       error: error instanceof Error ? error.message : String(error),
     };
   }
@@ -573,6 +577,7 @@ export async function syncOpportunities(
         created: 0,
         updated: 0,
         unchanged: 0,
+        removed: 0,
       };
     }
 
@@ -692,7 +697,40 @@ export async function syncOpportunities(
       }
     }
 
-    console.log(`[NativeSync] Opportunity sync results: ${entries.length} total, ${created} created, ${updated} updated, ${unchanged} unchanged, ${errors} errors`);
+    // Remove stale opportunities that no longer appear in the feed
+    const feedExternalIds = new Set<string>();
+    for (const entry of entries) {
+      const mapped = mapOpportunityEntry(entry, 0);
+      if (mapped.external_id) {
+        feedExternalIds.add(String(mapped.external_id));
+      }
+    }
+
+    let removed = 0;
+    const allLocalRows = db.prepare('SELECT id, external_id, opportunity_name FROM opportunities').all() as { id: number; external_id: string; opportunity_name: string | null }[];
+    const deleteStmt = db.prepare('DELETE FROM opportunities WHERE id = ?');
+
+    for (const row of allLocalRows) {
+      if (!feedExternalIds.has(row.external_id)) {
+        deleteStmt.run(row.id);
+
+        // Record removal in change audit
+        insertChangeStmt.run(
+          syncHistoryId,
+          row.id,
+          row.external_id,
+          'REMOVED',
+          null,
+          row.opportunity_name,
+          null
+        );
+
+        console.log(`[NativeSync] Removed stale opportunity: ${row.opportunity_name} (external_id=${row.external_id})`);
+        removed++;
+      }
+    }
+
+    console.log(`[NativeSync] Opportunity sync results: ${entries.length} total, ${created} created, ${updated} updated, ${unchanged} unchanged, ${removed} removed, ${errors} errors`);
 
     return {
       success: true,
@@ -700,6 +738,7 @@ export async function syncOpportunities(
       created,
       updated,
       unchanged,
+      removed,
     };
   } catch (error) {
     console.error('[NativeSync] Opportunity sync failed:', error);
@@ -709,6 +748,7 @@ export async function syncOpportunities(
       created: 0,
       updated: 0,
       unchanged: 0,
+      removed: 0,
       error: error instanceof Error ? error.message : String(error),
     };
   }
@@ -749,6 +789,7 @@ export async function syncServiceTickets(
         created: 0,
         updated: 0,
         unchanged: 0,
+        removed: 0,
       };
     }
 
@@ -865,6 +906,7 @@ export async function syncServiceTickets(
       created,
       updated,
       unchanged,
+      removed: 0,
     };
   } catch (error) {
     console.error('[NativeSync] Service ticket sync failed:', error);
@@ -874,6 +916,7 @@ export async function syncServiceTickets(
       created: 0,
       updated: 0,
       unchanged: 0,
+      removed: 0,
       error: error instanceof Error ? error.message : String(error),
     };
   }
