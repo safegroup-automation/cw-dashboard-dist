@@ -215,8 +215,39 @@ export async function fetchProjectDetail(
           tablixesWithData++;
           console.log(`[NativeSync] ${tablix}: ${entries.length} entries`);
 
-          // For tablixes with multiple entries (like time entries), only take the first row
-          // which typically contains totals. Store the count for reference.
+          // Hours tablixes (Tablix4, Tablix15) may have multiple rows (one per phase/WBS).
+          // Sum the hours fields across all rows to get project totals.
+          const hoursFieldNames = ['Hours_Budget', 'HoursBudget', 'Hours_Actual', 'HoursActual',
+            'Estimated_Hours', 'EstimatedHours', 'Actual_Hours', 'ActualHours',
+            'Hours_Remaining', 'HoursRemaining', 'Remaining_Hours', 'RemainingHours'];
+          const isHoursTablix = tablix === 'Tablix4' || tablix === 'Tablix15';
+
+          if (isHoursTablix && entries.length > 1) {
+            // Sum hours across all rows (phases/WBS codes)
+            const hoursSums: Record<string, number> = {};
+            for (const row of entries) {
+              for (const [key, value] of Object.entries(row)) {
+                if (hoursFieldNames.includes(key) && value) {
+                  const num = parseFloat(String(value).replace(/[$,€£]/g, '').trim());
+                  if (!isNaN(num)) {
+                    hoursSums[key] = (hoursSums[key] || 0) + num;
+                  }
+                }
+              }
+            }
+            console.log(`[NativeSync] ${tablix}: Summed hours across ${entries.length} phases:`, hoursSums);
+
+            // Store summed hours as the values
+            for (const [key, sum] of Object.entries(hoursSums)) {
+              const sumStr = sum.toFixed(2);
+              if (hoursFieldNames.includes(key)) {
+                allFields[key] = sumStr;
+              }
+              allFields[`${tablix}_${key}`] = sumStr;
+            }
+          }
+
+          // Use the first row for non-hours fields (or all fields if single row)
           const entry = entries[0];
 
           // Prefix fields with tablix name to avoid conflicts (except common fields)
@@ -225,14 +256,18 @@ export async function fetchProjectDetail(
               const cleanValue = typeof value === 'string' ? cleanHtmlEntities(value) : value;
 
               // Store both prefixed and unprefixed for common fields
-              if (['Company', 'Name', 'Status', 'End_Date', 'Quoted', 'Estimated_Cost', 'Actual_Cost',
+              // Skip hours fields if we already summed them above
+              const alreadySummed = isHoursTablix && entries.length > 1 && hoursFieldNames.includes(key);
+              if (!alreadySummed && ['Company', 'Name', 'Status', 'End_Date', 'Quoted', 'Estimated_Cost', 'Actual_Cost',
                    'Billable', 'Invoiced', 'WIP21', 'CIA_Remaining', 'Hours_Budget', 'Hours_Actual',
                    'Estimated_Hours', 'Actual_Hours', 'Hours_Remaining',
                    'Work_Role', 'ReportTitle'].includes(key)) {
                 allFields[key] = cleanValue;
               }
-              // Always store with tablix prefix for traceability
-              allFields[`${tablix}_${key}`] = cleanValue;
+              // Always store with tablix prefix for traceability (skip if already summed)
+              if (!alreadySummed) {
+                allFields[`${tablix}_${key}`] = cleanValue;
+              }
             }
           }
 
