@@ -12,6 +12,10 @@ export interface Project {
   hoursActual: number | null;
   hoursRemaining: number | null;
   hoursOverride: number | null;
+  endDate: string | null;
+  billable: number | null;
+  invoiced: number | null;
+  wip: number | null;
   status: string;
   isActive: boolean;
   notes: string | null;
@@ -52,6 +56,10 @@ function transformRow(row: ProjectRow): Project {
     hoursActual: row.hours_actual,
     hoursRemaining: row.hours_remaining,
     hoursOverride: row.hours_override,
+    endDate: row.end_date,
+    billable: row.billable,
+    invoiced: row.invoiced,
+    wip: row.wip,
     status: row.status,
     isActive: row.is_active === 1,
     notes: row.notes,

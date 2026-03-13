@@ -3,7 +3,7 @@
  * Equivalent to the PostgreSQL schema from the original backend
  */
 
-export const SCHEMA_VERSION = 10;
+export const SCHEMA_VERSION = 11;
 
 export const createTablesSQL = `
 -- Projects table
@@ -17,6 +17,10 @@ CREATE TABLE IF NOT EXISTS projects (
     hours_estimate REAL,
     hours_actual REAL,
     hours_remaining REAL,
+    end_date TEXT,
+    billable REAL,
+    invoiced REAL,
+    wip REAL,
     status TEXT DEFAULT 'ACTIVE',
     is_active INTEGER DEFAULT 1,
     notes TEXT,
@@ -38,9 +42,11 @@ CREATE TABLE IF NOT EXISTS opportunities (
     company_name TEXT,
     sales_rep TEXT,
     stage TEXT,
+    status TEXT,
     expected_revenue REAL,
     close_date TEXT,
     probability INTEGER,
+    date_became_lead TEXT,
     notes TEXT,
     raw_data TEXT,
     created_at TEXT DEFAULT (datetime('now')),
@@ -69,6 +75,9 @@ CREATE TABLE IF NOT EXISTS service_tickets (
     hours_actual REAL,
     hours_remaining REAL,
     budget REAL,
+    age REAL,
+    contact_name TEXT,
+    date_closed TEXT,
     notes TEXT,
     raw_data TEXT,
     created_at TEXT DEFAULT (datetime('now')),
@@ -163,6 +172,10 @@ export interface ProjectRow {
   hours_estimate: number | null;
   hours_actual: number | null;
   hours_remaining: number | null;
+  end_date: string | null;
+  billable: number | null;
+  invoiced: number | null;
+  wip: number | null;
   status: string;
   is_active: number;
   notes: string | null;
@@ -184,6 +197,7 @@ export interface OpportunityRow {
   expected_revenue: number | null;
   close_date: string | null;
   probability: number | null;
+  date_became_lead: string | null;
   notes: string | null;
   raw_data: string | null;
   created_at: string;
@@ -235,6 +249,9 @@ export interface ServiceTicketRow {
   hours_actual: number | null;
   hours_remaining: number | null;
   budget: number | null;
+  age: number | null;
+  contact_name: string | null;
+  date_closed: string | null;
   notes: string | null;
   raw_data: string | null;
   created_at: string;

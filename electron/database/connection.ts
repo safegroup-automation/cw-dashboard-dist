@@ -307,6 +307,30 @@ async function runMigration(version: number): Promise<void> {
         console.log('records_removed column may already exist:', e);
       }
       break;
+    case 11:
+      // Add new data columns to projects, opportunities, and service tickets
+      console.log('Adding new data columns for projects, opportunities, and service tickets');
+      try {
+        db.exec('ALTER TABLE projects ADD COLUMN end_date TEXT');
+        db.exec('ALTER TABLE projects ADD COLUMN billable REAL');
+        db.exec('ALTER TABLE projects ADD COLUMN invoiced REAL');
+        db.exec('ALTER TABLE projects ADD COLUMN wip REAL');
+      } catch (e) {
+        console.log('Project columns may already exist:', e);
+      }
+      try {
+        db.exec('ALTER TABLE opportunities ADD COLUMN date_became_lead TEXT');
+      } catch (e) {
+        console.log('Opportunity columns may already exist:', e);
+      }
+      try {
+        db.exec('ALTER TABLE service_tickets ADD COLUMN age REAL');
+        db.exec('ALTER TABLE service_tickets ADD COLUMN contact_name TEXT');
+        db.exec('ALTER TABLE service_tickets ADD COLUMN date_closed TEXT');
+      } catch (e) {
+        console.log('Service ticket columns may already exist:', e);
+      }
+      break;
     default:
       console.log(`No migration needed for version ${version}`);
   }

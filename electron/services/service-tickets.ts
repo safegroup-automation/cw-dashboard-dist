@@ -17,6 +17,9 @@ export interface ServiceTicket {
   hoursActual: number | null;
   hoursRemaining: number | null;
   budget: number | null;
+  age: number | null;
+  contactName: string | null;
+  dateClosed: string | null;
   notes: string | null;
   rawData: Record<string, unknown> | null;
   createdAt: string;
@@ -53,6 +56,9 @@ function transformRow(row: ServiceTicketRow): ServiceTicket {
     hoursActual: row.hours_actual,
     hoursRemaining: row.hours_remaining,
     budget: row.budget,
+    age: row.age,
+    contactName: row.contact_name,
+    dateClosed: row.date_closed,
     notes: row.notes,
     rawData: row.raw_data ? JSON.parse(row.raw_data) : null,
     createdAt: row.created_at,

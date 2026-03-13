@@ -397,8 +397,8 @@ export async function syncProjects(
     let unchanged = 0;
 
     const insertStmt = db.prepare(`
-      INSERT INTO projects (external_id, client_name, project_name, budget, spent, hours_estimate, hours_actual, hours_remaining, status, is_active, notes, raw_data, detail_raw_data, updated_at)
-      VALUES (@external_id, @client_name, @project_name, @budget, @spent, @hours_estimate, @hours_actual, @hours_remaining, @status, @is_active, @notes, @raw_data, @detail_raw_data, datetime('now'))
+      INSERT INTO projects (external_id, client_name, project_name, budget, spent, hours_estimate, hours_actual, hours_remaining, end_date, billable, invoiced, wip, status, is_active, notes, raw_data, detail_raw_data, updated_at)
+      VALUES (@external_id, @client_name, @project_name, @budget, @spent, @hours_estimate, @hours_actual, @hours_remaining, @end_date, @billable, @invoiced, @wip, @status, @is_active, @notes, @raw_data, @detail_raw_data, datetime('now'))
     `);
 
     const updateStmt = db.prepare(`
@@ -410,6 +410,10 @@ export async function syncProjects(
         hours_estimate = @hours_estimate,
         hours_actual = @hours_actual,
         hours_remaining = @hours_remaining,
+        end_date = @end_date,
+        billable = @billable,
+        invoiced = @invoiced,
+        wip = @wip,
         status = @status,
         is_active = @is_active,
         notes = @notes,
@@ -477,6 +481,12 @@ export async function syncProjects(
                 mapped.hours_remaining = Math.max(0, detailHoursEstimate - detailHoursActual);
               }
 
+              // Use end_date from detail if available (more reliable than summary)
+              const detailEndDate = toStr(fields.End_Date ?? fields.EndDate);
+              if (detailEndDate) {
+                mapped.end_date = detailEndDate;
+              }
+
               // Log all hours-related fields from detail for debugging
               const hoursFields = Object.entries(detail.allFields)
                 .filter(([k]) => {
@@ -503,6 +513,10 @@ export async function syncProjects(
             'hours_estimate',
             'hours_actual',
             'hours_remaining',
+            'end_date',
+            'billable',
+            'invoiced',
+            'wip',
             'status',
             'is_active',
             'notes',
@@ -551,13 +565,37 @@ export async function syncProjects(
       }
     }
 
+    // Remove stale projects that no longer appear in the feed
+    const feedProjectIds = new Set<string>();
+    for (const entry of entries) {
+      const mapped = mapProjectEntry(entry);
+      if (mapped.external_id) {
+        feedProjectIds.add(String(mapped.external_id));
+      }
+    }
+
+    let removed = 0;
+    const allLocalProjects = db.prepare('SELECT id, external_id, project_name FROM projects').all() as { id: number; external_id: string; project_name: string | null }[];
+    const deleteProjectStmt = db.prepare('DELETE FROM projects WHERE id = ?');
+
+    for (const row of allLocalProjects) {
+      if (!feedProjectIds.has(row.external_id)) {
+        deleteProjectStmt.run(row.id);
+        insertChangeStmt.run(syncHistoryId, row.id, row.external_id, 'REMOVED', null, row.project_name, null);
+        console.log(`[NativeSync] Removed stale project: ${row.project_name} (external_id=${row.external_id})`);
+        removed++;
+      }
+    }
+
+    console.log(`[NativeSync] Project sync results: ${entries.length} total, ${created} created, ${updated} updated, ${unchanged} unchanged, ${removed} removed`);
+
     return {
       success: true,
       total: entries.length,
       created,
       updated,
       unchanged,
-      removed: 0,
+      removed,
     };
   } catch (error) {
     console.error('[NativeSync] Project sync failed:', error);
@@ -645,8 +683,8 @@ export async function syncOpportunities(
     let errors = 0;
 
     const insertStmt = db.prepare(`
-      INSERT INTO opportunities (external_id, opportunity_name, company_name, sales_rep, stage, status, expected_revenue, close_date, probability, notes, raw_data, updated_at)
-      VALUES (@external_id, @opportunity_name, @company_name, @sales_rep, @stage, @status, @expected_revenue, @close_date, @probability, @notes, @raw_data, datetime('now'))
+      INSERT INTO opportunities (external_id, opportunity_name, company_name, sales_rep, stage, status, expected_revenue, close_date, probability, date_became_lead, notes, raw_data, updated_at)
+      VALUES (@external_id, @opportunity_name, @company_name, @sales_rep, @stage, @status, @expected_revenue, @close_date, @probability, @date_became_lead, @notes, @raw_data, datetime('now'))
     `);
 
     const updateStmt = db.prepare(`
@@ -659,6 +697,7 @@ export async function syncOpportunities(
         expected_revenue = @expected_revenue,
         close_date = @close_date,
         probability = @probability,
+        date_became_lead = @date_became_lead,
         notes = @notes,
         raw_data = @raw_data,
         updated_at = datetime('now')
@@ -691,6 +730,7 @@ export async function syncOpportunities(
             'expected_revenue',
             'close_date',
             'probability',
+            'date_became_lead',
             'notes',
             'raw_data',
           ]);
@@ -843,8 +883,8 @@ export async function syncServiceTickets(
     let unchanged = 0;
 
     const insertStmt = db.prepare(`
-      INSERT INTO service_tickets (external_id, summary, status, priority, assigned_to, company_name, board_name, created_date, last_updated, due_date, hours_estimate, hours_actual, hours_remaining, budget, notes, raw_data, updated_at)
-      VALUES (@external_id, @summary, @status, @priority, @assigned_to, @company_name, @board_name, @created_date, @last_updated, @due_date, @hours_estimate, @hours_actual, @hours_remaining, @budget, @notes, @raw_data, datetime('now'))
+      INSERT INTO service_tickets (external_id, summary, status, priority, assigned_to, company_name, board_name, created_date, last_updated, due_date, hours_estimate, hours_actual, hours_remaining, budget, age, contact_name, date_closed, notes, raw_data, updated_at)
+      VALUES (@external_id, @summary, @status, @priority, @assigned_to, @company_name, @board_name, @created_date, @last_updated, @due_date, @hours_estimate, @hours_actual, @hours_remaining, @budget, @age, @contact_name, @date_closed, @notes, @raw_data, datetime('now'))
     `);
 
     const updateStmt = db.prepare(`
@@ -862,6 +902,9 @@ export async function syncServiceTickets(
         hours_actual = @hours_actual,
         hours_remaining = @hours_remaining,
         budget = @budget,
+        age = @age,
+        contact_name = @contact_name,
+        date_closed = @date_closed,
         notes = @notes,
         raw_data = @raw_data,
         updated_at = datetime('now')
@@ -891,11 +934,16 @@ export async function syncServiceTickets(
             'assigned_to',
             'company_name',
             'board_name',
+            'created_date',
+            'last_updated',
             'due_date',
             'hours_estimate',
             'hours_actual',
             'hours_remaining',
             'budget',
+            'age',
+            'contact_name',
+            'date_closed',
             'notes',
             'raw_data',
           ]);
@@ -942,13 +990,37 @@ export async function syncServiceTickets(
       }
     }
 
+    // Remove stale service tickets that no longer appear in the feed
+    const feedTicketIds = new Set<string>();
+    for (const entry of entries) {
+      const mapped = mapServiceTicketEntry(entry);
+      if (mapped.external_id) {
+        feedTicketIds.add(String(mapped.external_id));
+      }
+    }
+
+    let removed = 0;
+    const allLocalTickets = db.prepare('SELECT id, external_id, summary FROM service_tickets').all() as { id: number; external_id: string; summary: string | null }[];
+    const deleteTicketStmt = db.prepare('DELETE FROM service_tickets WHERE id = ?');
+
+    for (const row of allLocalTickets) {
+      if (!feedTicketIds.has(row.external_id)) {
+        deleteTicketStmt.run(row.id);
+        insertChangeStmt.run(syncHistoryId, row.id, row.external_id, 'REMOVED', null, row.summary, null);
+        console.log(`[NativeSync] Removed stale service ticket: ${row.summary} (external_id=${row.external_id})`);
+        removed++;
+      }
+    }
+
+    console.log(`[NativeSync] Service ticket sync results: ${entries.length} total, ${created} created, ${updated} updated, ${unchanged} unchanged, ${removed} removed`);
+
     return {
       success: true,
       total: entries.length,
       created,
       updated,
       unchanged,
-      removed: 0,
+      removed,
     };
   } catch (error) {
     console.error('[NativeSync] Service ticket sync failed:', error);
@@ -1050,6 +1122,14 @@ function mapProjectEntry(entry: AtomEntry): Record<string, unknown> {
   // NO FALLBACK CALCULATIONS - only use real data from the feed
   // If hours data is not available, it will be null and displayed as N/A in the UI
 
+  // Financial fields from summary feed
+  const billable = parseNumber(entry.Billable || entry.Billable1);
+  const invoiced = parseNumber(entry.Invoiced || entry.Invoiced1);
+  const wipValue = parseNumber(entry.WIP1 || entry.WIP);
+
+  // End date from summary feed
+  const endDate = entry.End_Date1 || entry.End_Date || entry.EndDate || null;
+
   // Build notes with WIP and completion percentage
   const wip = entry.WIP1 || entry.WIP || '';
   const pctComplete = entry.Textbox232 || entry.PercentComplete || '0';
@@ -1063,11 +1143,15 @@ function mapProjectEntry(entry: AtomEntry): Record<string, unknown> {
     external_id: externalId,
     client_name: clientName || null,
     project_name: projectName || null,
-    budget: budget || null,
-    spent: spent || null,
-    hours_estimate: hoursEstimate || null,
-    hours_actual: hoursActual || null,
-    hours_remaining: hoursRemaining || 0,
+    budget: budget ?? null,
+    spent: spent ?? null,
+    hours_estimate: hoursEstimate ?? null,
+    hours_actual: hoursActual ?? null,
+    hours_remaining: hoursRemaining ?? 0,
+    end_date: endDate,
+    billable: billable ?? null,
+    invoiced: invoiced ?? null,
+    wip: wipValue ?? null,
     status: status || 'Unknown',
     is_active: isActive ? 1 : 0,
     notes,
@@ -1251,6 +1335,10 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
                     entry.Forecast_Close || entry.ForecastClose || entry.Due_Date || entry.DueDate ||
                     null;
 
+  // Date became lead
+  const dateBecameLead = entry.Date_Became_Lead2 || entry.Date_Became_Lead || entry.DateBecameLead ||
+                         entry.Lead_Date || entry.LeadDate || null;
+
   // Probability - try many variations including percentage fields
   const probability = parseNumber(
     entry.Probability2 ||    // Tablix4 field
@@ -1270,9 +1358,10 @@ function mapOpportunityEntry(entry: AtomEntry, index: number): Record<string, un
     sales_rep: salesRep || null,
     stage: stage || null,
     status: status || null,
-    expected_revenue: expectedRevenue || null,
+    expected_revenue: expectedRevenue ?? null,
     close_date: closeDate || null,
     probability: probability !== null ? Math.round((probability > 1 ? probability : probability * 100)) : null,
+    date_became_lead: dateBecameLead || null,
     notes: null,
     raw_data: rawData,
   };
@@ -1309,6 +1398,11 @@ function mapServiceTicketEntry(entry: AtomEntry): Record<string, unknown> {
   const hoursRemaining = parseNumber(entry.RemainingHours || entry.Remaining_Hours || entry.HoursRemaining);
   const budget = parseNumber(entry.Budget || entry.BudgetAmount || entry.Budget_Amount);
 
+  // Ticket age and contact
+  const age = parseNumber(entry.Age || entry.age || entry.Ticket_Age || entry.TicketAge);
+  const contactName = cleanHtmlEntities(entry.contact_name || entry.Contact_Name || entry.ContactName || entry.Contact || '');
+  const dateClosed = entry.date_closed || entry.Date_Closed || entry.DateClosed || entry.ClosedDate || entry.Closed_Date || null;
+
   // Notes
   const notes = cleanHtmlEntities(entry.Notes || entry.Comments || entry.InternalNotes || '');
 
@@ -1326,10 +1420,13 @@ function mapServiceTicketEntry(entry: AtomEntry): Record<string, unknown> {
     created_date: createdDate || null,
     last_updated: lastUpdated || null,
     due_date: dueDate || null,
-    hours_estimate: hoursEstimate || null,
-    hours_actual: hoursActual || null,
-    hours_remaining: hoursRemaining || null,
-    budget: budget || null,
+    hours_estimate: hoursEstimate ?? null,
+    hours_actual: hoursActual ?? null,
+    hours_remaining: hoursRemaining ?? null,
+    budget: budget ?? null,
+    age: age ?? null,
+    contact_name: contactName || null,
+    date_closed: dateClosed || null,
     notes: notes || null,
     raw_data: rawData,
   };
@@ -1386,8 +1483,11 @@ function safeStringifyEntry(entry: AtomEntry): string {
 function parseNumber(value: string | undefined): number | null {
   if (!value) return null;
 
-  // Remove currency symbols and commas
-  const cleaned = value.replace(/[$,€£]/g, '').trim();
+  // Remove currency symbols, commas, and handle accounting-format negatives like (123.45)
+  let cleaned = value.replace(/[$,€£]/g, '').trim();
+  if (cleaned.startsWith('(') && cleaned.endsWith(')')) {
+    cleaned = '-' + cleaned.slice(1, -1);
+  }
   const num = parseFloat(cleaned);
 
   return isNaN(num) ? null : num;
@@ -1409,27 +1509,45 @@ function compareFields(
     const oldVal = existingRec[field];
     const newVal = newRec[field];
 
-    // Normalize for comparison
-    const oldStr = oldVal === null || oldVal === undefined ? '' : String(oldVal);
-    const newStr = newVal === null || newVal === undefined ? '' : String(newVal);
+    // Handle null/undefined transitions explicitly
+    const oldIsNull = oldVal === null || oldVal === undefined;
+    const newIsNull = newVal === null || newVal === undefined;
+
+    if (oldIsNull && newIsNull) continue;
+
+    if (oldIsNull !== newIsNull) {
+      // One is null and the other isn't — that's a change
+      changes.push({
+        field,
+        oldValue: oldIsNull ? null : String(oldVal),
+        newValue: newIsNull ? null : String(newVal),
+      });
+      continue;
+    }
+
+    // Both are non-null — compare values
+    const oldStr = String(oldVal);
+    const newStr = String(newVal);
 
     // For numeric fields, round for comparison
     if (typeof newVal === 'number' || typeof oldVal === 'number') {
-      const oldNum = parseFloat(oldStr) || 0;
-      const newNum = parseFloat(newStr) || 0;
+      const oldNum = parseFloat(oldStr);
+      const newNum = parseFloat(newStr);
+      const oldSafe = isNaN(oldNum) ? 0 : oldNum;
+      const newSafe = isNaN(newNum) ? 0 : newNum;
 
-      if (Math.abs(oldNum - newNum) > 0.01) {
+      if (Math.abs(oldSafe - newSafe) > 0.01) {
         changes.push({
           field,
-          oldValue: oldStr || null,
-          newValue: newStr || null,
+          oldValue: oldStr,
+          newValue: newStr,
         });
       }
     } else if (oldStr !== newStr) {
       changes.push({
         field,
-        oldValue: oldStr || null,
-        newValue: newStr || null,
+        oldValue: oldStr,
+        newValue: newStr,
       });
     }
   }

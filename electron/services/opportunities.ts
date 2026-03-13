@@ -12,6 +12,7 @@ export interface Opportunity {
   expectedRevenue: number | null;
   closeDate: string | null;
   probability: number | null;
+  dateBecameLead: string | null;
   notes: string | null;
   rawData: Record<string, unknown> | null;
   createdAt: string;
@@ -45,6 +46,7 @@ function transformRow(row: OpportunityRow): Opportunity {
     expectedRevenue: row.expected_revenue,
     closeDate: row.close_date,
     probability: row.probability,
+    dateBecameLead: row.date_became_lead,
     notes: row.notes,
     rawData: row.raw_data ? JSON.parse(row.raw_data) : null,
     createdAt: row.created_at,
