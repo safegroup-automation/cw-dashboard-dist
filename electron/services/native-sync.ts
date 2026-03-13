@@ -227,6 +227,7 @@ export async function fetchProjectDetail(
               // Store both prefixed and unprefixed for common fields
               if (['Company', 'Name', 'Status', 'End_Date', 'Quoted', 'Estimated_Cost', 'Actual_Cost',
                    'Billable', 'Invoiced', 'WIP21', 'CIA_Remaining', 'Hours_Budget', 'Hours_Actual',
+                   'Estimated_Hours', 'Actual_Hours', 'Hours_Remaining',
                    'Work_Role', 'ReportTitle'].includes(key)) {
                 allFields[key] = cleanValue;
               }
@@ -422,9 +423,9 @@ export async function syncProjects(
               // Helper to convert value to string for parseNumber
               const toStr = (v: string | number | undefined): string | undefined =>
                 v === undefined ? undefined : String(v);
-              const detailHoursEstimate = parseNumber(toStr(fields.Hours_Budget ?? fields.HoursBudget));
-              const detailHoursActual = parseNumber(toStr(fields.Hours_Actual ?? fields.HoursActual));
-              const detailHoursRemaining = parseNumber(toStr(fields.Textbox319 ?? fields.Hours_Remaining ?? fields.HoursRemaining));
+              const detailHoursEstimate = parseNumber(toStr(fields.Hours_Budget ?? fields.HoursBudget ?? fields.Estimated_Hours ?? fields.EstimatedHours));
+              const detailHoursActual = parseNumber(toStr(fields.Hours_Actual ?? fields.HoursActual ?? fields.Actual_Hours ?? fields.ActualHours));
+              const detailHoursRemaining = parseNumber(toStr(fields.Textbox319 ?? fields.Hours_Remaining ?? fields.HoursRemaining ?? fields.Remaining_Hours ?? fields.RemainingHours));
 
               // Use detail hours if available (they're more accurate than budget-based calculation)
               if (detailHoursEstimate !== null) {
@@ -441,7 +442,13 @@ export async function syncProjects(
                 mapped.hours_remaining = Math.max(0, detailHoursEstimate - detailHoursActual);
               }
 
-              console.log(`[NativeSync] Project ${mapped.external_id}: Status="${mapped.status}", isActive=${mapped.is_active}, hours=${mapped.hours_actual}/${mapped.hours_estimate}, detailFields=${Object.keys(detail.allFields).length}`);
+              // Log all hours-related fields from detail for debugging
+              const hoursFields = Object.entries(detail.allFields)
+                .filter(([k]) => {
+                  const lk = k.toLowerCase();
+                  return lk.includes('hour') || lk.includes('hrs') || lk.includes('estimated') || lk.includes('actual') || lk.includes('budget') || lk.includes('remaining');
+                });
+              console.log(`[NativeSync] Project ${mapped.external_id}: Status="${mapped.status}", isActive=${mapped.is_active}, hours=${mapped.hours_actual}/${mapped.hours_estimate}, detailFields=${Object.keys(detail.allFields).length}, hoursFields=${JSON.stringify(Object.fromEntries(hoursFields))}`);
             }
           } catch (detailError) {
             console.error(`[NativeSync] Failed to fetch detail for ${mapped.external_id}:`, detailError);
