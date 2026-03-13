@@ -16,6 +16,9 @@ export interface ServiceTicket {
   hoursActual?: number;
   hoursRemaining?: number;
   budget?: number;
+  age?: number;
+  contactName?: string;
+  dateClosed?: string;
   notes?: string;
   rawData?: string;
   createdAt: string;
@@ -38,6 +41,9 @@ export interface ServiceTicketAPI {
   hours_actual?: number;
   hours_remaining?: number;
   budget?: number;
+  age?: number;
+  contact_name?: string;
+  date_closed?: string;
   notes?: string;
   raw_data?: string;
   created_at: string;
@@ -61,6 +67,9 @@ export function transformServiceTicket(api: ServiceTicketAPI): ServiceTicket {
     hoursActual: api.hours_actual,
     hoursRemaining: api.hours_remaining,
     budget: api.budget,
+    age: api.age,
+    contactName: api.contact_name,
+    dateClosed: api.date_closed,
     notes: api.notes,
     rawData: api.raw_data,
     createdAt: api.created_at,
@@ -119,6 +128,10 @@ export interface Project {
   hoursActual?: number;
   hoursRemaining?: number;
   hoursOverride?: number | null;
+  endDate?: string;
+  billable?: number;
+  invoiced?: number;
+  wip?: number;
   status: string;
   isActive: boolean;
   notes?: string;
@@ -142,6 +155,7 @@ export interface Opportunity {
   expectedRevenue?: number;
   closeDate?: string;
   probability?: number;
+  dateBecameLead?: string;
   notes?: string;
   rawData?: string;
   weightedValue?: number;
@@ -167,6 +181,10 @@ export interface ProjectAPI {
   hours_actual?: number;
   hours_remaining?: number;
   hours_override?: number | null;
+  end_date?: string;
+  billable?: number;
+  invoiced?: number;
+  wip?: number;
   status: string;
   is_active: boolean;
   notes?: string;
@@ -190,6 +208,7 @@ export interface OpportunityAPI {
   expected_revenue?: number;
   close_date?: string;
   probability?: number;
+  date_became_lead?: string;
   notes?: string;
   raw_data?: string;
   weighted_value?: number;
@@ -210,6 +229,10 @@ export function transformProject(api: ProjectAPI): Project {
     hoursActual: api.hours_actual,
     hoursRemaining: api.hours_remaining,
     hoursOverride: api.hours_override,
+    endDate: api.end_date,
+    billable: api.billable,
+    invoiced: api.invoiced,
+    wip: api.wip,
     status: api.status,
     isActive: api.is_active,
     notes: api.notes,
@@ -235,6 +258,7 @@ export function transformOpportunity(api: OpportunityAPI): Opportunity {
     expectedRevenue: api.expected_revenue,
     closeDate: api.close_date,
     probability: api.probability,
+    dateBecameLead: api.date_became_lead,
     notes: api.notes,
     rawData: api.raw_data,
     weightedValue: api.weighted_value,

@@ -113,6 +113,16 @@ export default function OpportunityCard({ opportunity, isPinned, onTogglePin, al
             </div>
           )}
 
+          {/* Date became lead */}
+          {opportunity.dateBecameLead && (
+            <div className="flex items-center gap-2">
+              <Calendar size={12} className="text-gray-500" />
+              <span className="text-xs text-gray-400">
+                Lead Date: {formatDate(opportunity.dateBecameLead)}
+              </span>
+            </div>
+          )}
+
           {/* Sales rep */}
           {opportunity.salesRep && (
             <div className="flex items-center gap-2">

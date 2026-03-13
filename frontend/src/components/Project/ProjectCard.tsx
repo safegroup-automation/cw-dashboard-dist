@@ -266,6 +266,32 @@ export default function ProjectCard({ project, isPinned, onTogglePin, alwaysExpa
           )}
 
 
+          {/* Financial details */}
+          {(project.billable != null || project.invoiced != null || project.wip != null) && (
+            <div className="flex items-center gap-4 flex-wrap">
+              <DollarSign size={12} className="text-gray-500" />
+              {project.billable != null && (
+                <span className="text-xs text-gray-400">Billable: <span className="text-gray-300">{formatCurrency(project.billable)}</span></span>
+              )}
+              {project.invoiced != null && (
+                <span className="text-xs text-gray-400">Invoiced: <span className="text-gray-300">{formatCurrency(project.invoiced)}</span></span>
+              )}
+              {project.wip != null && (
+                <span className="text-xs text-gray-400">WIP: <span className={`${project.wip > 0 ? 'text-orange-400' : project.wip < 0 ? 'text-red-400' : 'text-gray-300'}`}>{formatCurrency(project.wip)}</span></span>
+              )}
+            </div>
+          )}
+
+          {/* End date */}
+          {project.endDate && (
+            <div className="flex items-center gap-2">
+              <Calendar size={12} className="text-gray-500" />
+              <span className="text-xs text-gray-400">
+                End Date: {formatDate(project.endDate)}
+              </span>
+            </div>
+          )}
+
           {/* Extended Detail Fields */}
           {detailFields.length > 0 && (
             <div className="mt-2 pt-2 border-t border-board-border/50">

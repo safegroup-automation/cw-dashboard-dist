@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pin, ChevronDown, ChevronUp, Calendar, Hash, Clock, User, Building2, DollarSign, Layout } from 'lucide-react';
+import { Pin, ChevronDown, ChevronUp, Calendar, Hash, Clock, User, Building2, DollarSign, Layout, Timer, UserCircle } from 'lucide-react';
 import { ServiceTicket } from '../../types';
 import { formatCurrency, formatDate, formatHours, getPriorityColor, getTicketStatusColor } from '../../utils/formatting';
 
@@ -80,6 +80,11 @@ export default function ServiceTicketCard({ ticket, isPinned, onTogglePin, alway
             {ticket.assignedTo}
           </span>
         )}
+        {ticket.age != null && (
+          <span className="text-[10px] text-gray-500 flex-shrink-0" title="Age in days">
+            {Math.round(ticket.age)}d
+          </span>
+        )}
         {ticket.hoursRemaining !== undefined && ticket.hoursRemaining !== null && (
           <span className="text-[10px] text-orange-400 flex-shrink-0">
             {formatHours(ticket.hoursRemaining)} left
@@ -140,6 +145,26 @@ export default function ServiceTicketCard({ ticket, isPinned, onTogglePin, alway
             </div>
           )}
 
+          {/* Contact */}
+          {ticket.contactName && (
+            <div className="flex items-center gap-2">
+              <UserCircle size={12} className="text-gray-500" />
+              <span className="text-xs text-gray-400">
+                Contact: {ticket.contactName}
+              </span>
+            </div>
+          )}
+
+          {/* Age */}
+          {ticket.age != null && (
+            <div className="flex items-center gap-2">
+              <Timer size={12} className="text-gray-500" />
+              <span className="text-xs text-gray-400">
+                Age: {Math.round(ticket.age)} days
+              </span>
+            </div>
+          )}
+
           {/* Board */}
           {ticket.boardName && (
             <div className="flex items-center gap-2">
@@ -166,6 +191,16 @@ export default function ServiceTicketCard({ ticket, isPinned, onTogglePin, alway
               <Calendar size={12} className="text-gray-500" />
               <span className="text-xs text-gray-400">
                 Due: {formatDate(ticket.dueDate)}
+              </span>
+            </div>
+          )}
+
+          {/* Date Closed */}
+          {ticket.dateClosed && (
+            <div className="flex items-center gap-2">
+              <Calendar size={12} className="text-gray-500" />
+              <span className="text-xs text-gray-400">
+                Closed: {formatDate(ticket.dateClosed)}
               </span>
             </div>
           )}
